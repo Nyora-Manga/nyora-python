@@ -1,10 +1,10 @@
 [project]
 name = "nyora"
-version = "0.3.2"
+version = "0.3.3"
 description = "Pure Python implementation of the Nyora manga engine"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-only" }
+license = { text = "Apache-2.0" }
 authors = [
     { name = "Md Hasan Raza" },
 ]
@@ -14,7 +14,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

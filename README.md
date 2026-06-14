@@ -15,7 +15,7 @@ The official Python package for **Nyora** — script your library, search 1000+ 
 </p>
 
 <p>
-  <a href="https://www.gnu.org/licenses/gpl-3.0"><img alt="License: GPL v3" src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge" /></a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" /></a>
   <a href="https://github.com/Hasan72341/nyora-python/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Hasan72341/nyora-python?style=for-the-badge&logo=github&logoColor=white" /></a>
   <a href="https://github.com/Hasan72341/nyora-python/pulls"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-FF4655?style=for-the-badge&logo=github&logoColor=white" /></a>
 </p>
@@ -78,7 +78,7 @@ with Nyora() as client:
 - **Read in your terminal.** A full Textual-based TUI ships in the box: bare `nyora-cli` opens it. Pick a source, browse, open a title, page through a chapter — without leaving the shell.
 - **Scriptable by design.** Add `--json` to any command and pipe straight into `jq` or your own tooling.
 - **Always current.** Sources update **over the air** — sha256-verified, atomic — so new and fixed parsers arrive without upgrading the package.
-- **Private by default.** No accounts, no ads, no tracking, no telemetry. Fully auditable, GPL-3.0 open source.
+- **Private by default.** No accounts, no ads, no tracking, no telemetry. Fully auditable, Apache-2.0 open source.
 
 ---
 
@@ -285,7 +285,7 @@ pip3 install nyora
 
 This installs the `nyora` Python library **and** the `nyora-cli` command (aliased as `nyora`), including the Textual-based terminal reader and the REST helper. It is pure Python with only Python-installed dependencies — no JVM helper, desktop app, Node.js, or Java to install.
 
-**Frictionless and safe by design.** `nyora` is published to PyPI straight from this public, GPL-3.0 repository — you can read every line before you run it. There's no account to create, no ads, no tracking, and no telemetry. The only network calls it makes are to the sources you explicitly ask for and to fetch the sha256-verified OTA parser bundle. Your library, history, and downloads stay on your machine, under your control.
+**Frictionless and safe by design.** `nyora` is published to PyPI straight from this public, Apache-2.0 repository — you can read every line before you run it. There's no account to create, no ads, no tracking, and no telemetry. The only network calls it makes are to the sources you explicitly ask for and to fetch the sha256-verified OTA parser bundle. Your library, history, and downloads stay on your machine, under your control.
 
 | Install | Command | Adds |
 |---|---|---|
@@ -340,7 +340,7 @@ Check what you're running with `nyora-cli version`.
 ## FAQ
 
 **Is it really free?**
-Yes. `nyora` is 100% free and open source under GPL-3.0. There are no paid tiers, no ads, and no upsells.
+Yes. `nyora` is 100% free and open source under Apache-2.0. There are no paid tiers, no ads, and no upsells.
 
 **Do I need an account?**
 No. There's nothing to sign up for. Install the package and start reading or scripting immediately.
@@ -349,7 +349,7 @@ No. There's nothing to sign up for. Install the package and start reading or scr
 Yes. There are no analytics, no telemetry, and no accounts. The only network calls `nyora` makes are to the sources you explicitly request and to fetch the sha256-verified OTA parser bundle. Your library, history, and downloads live on your own machine.
 
 **Is it safe? Can I audit it?**
-Every line is public, GPL-3.0 source code in this repository, and the wheel on PyPI is built from it. You're welcome to read the code, run it in a virtual environment, and inspect exactly what it talks to over the network.
+Every line is public, Apache-2.0 source code in this repository, and the wheel on PyPI is built from it. You're welcome to read the code, run it in a virtual environment, and inspect exactly what it talks to over the network.
 
 **How do I update?**
 Upgrade the package with `pip3 install --upgrade nyora`, and refresh the sources with `nyora-cli update`. The two update independently — most source fixes arrive over the air without a package upgrade.
@@ -512,7 +512,7 @@ The Nyora reader is everywhere your screens are — and your library, history, b
 
 ## Privacy & open source
 
-Nyora is 100% free, ad-free, and contains no tracking. `nyora` is fully auditable open-source code: there are no analytics, no telemetry, and no accounts. The only network calls it makes are to the sources you ask for and to fetch the sha256-verified OTA parser bundle. Licensed under **GPL-3.0-only**.
+Nyora is 100% free, ad-free, and contains no tracking. `nyora` is fully auditable open-source code: there are no analytics, no telemetry, and no accounts. The only network calls it makes are to the sources you ask for and to fetch the sha256-verified OTA parser bundle. Licensed under **Apache-2.0**.
 
 ## Acknowledgements
 
@@ -522,7 +522,7 @@ If `nyora` is useful to you, the kindest thing you can do is **star the repo and
 
 ## License
 
-Licensed under **GPL-3.0-only**. See the project metadata in `pyproject.toml` for details.
+Licensed under **Apache-2.0**. See the project metadata in `pyproject.toml` for details.
 
 ---
 
