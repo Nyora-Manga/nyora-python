@@ -1,0 +1,1 @@
+"""Bundled Nyora parser assets."""

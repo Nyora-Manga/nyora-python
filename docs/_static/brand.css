@@ -1,0 +1,146 @@
+/*
+ * Nyora Python docs — brand theme.
+ *
+ * Makes Furo match the nyora-site look: dark by default (bg #0e100f,
+ * text #fffce1), the green -> lilac gradient on accents, generous rounded
+ * corners, the "Mori" typeface, and a ui-monospace code font. Light mode
+ * stays usable but the project ships dark-first.
+ */
+
+/* ---- Fonts (served same-origin from /fonts on nyora.pages.dev) ---------------- */
+
+@font-face {
+  font-family: "Mori";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/PPMori-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Mori";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/PPMori-SemiBold.woff2") format("woff2");
+}
+
+/* ---- Brand tokens ------------------------------------------------------- */
+
+:root {
+  --nyora-bg: #0e100f;
+  --nyora-text: #fffce1;
+  --nyora-dim: rgba(255, 252, 225, 0.66);
+  --nyora-border: rgba(255, 252, 225, 0.1);
+  --nyora-green: #0ae448;
+  --nyora-blue: #00bae2;
+  --nyora-lilac: #9d95ff;
+  --nyora-gradient: linear-gradient(115deg, #0ae448, #9d95ff);
+  --nyora-radius: 18px;
+  --nyora-radius-lg: 28px;
+
+  /* Furo radius tokens. */
+  --font-stack: "Mori", ui-sans-serif, system-ui, sans-serif;
+  --font-stack--monospace: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+/* Default to the dark brand palette even before the user toggles. */
+body {
+  font-feature-settings: "ss01", "cv01";
+}
+
+/* ---- Rounded surfaces --------------------------------------------------- */
+
+.highlight,
+div.highlight,
+pre,
+.admonition,
+.sidebar,
+.sphinxsidebar,
+table.docutils,
+.sig {
+  border-radius: var(--nyora-radius) !important;
+}
+
+div.highlight,
+pre {
+  border: 1px solid var(--nyora-border);
+}
+
+/* Glassy, rounded code blocks. */
+.dark div.highlight,
+body[data-theme="dark"] div.highlight {
+  background: rgba(255, 252, 225, 0.03);
+}
+
+/* ---- Gradient brand accents -------------------------------------------- */
+
+/* Sidebar brand title picks up the green -> lilac gradient. */
+.sidebar-brand-text,
+.sidebar-brand {
+  background: var(--nyora-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+}
+
+/* Thin gradient hairline under the top header / search bar. */
+.mobile-header,
+.content-icon-container {
+  border-color: var(--nyora-border);
+}
+
+/* Active nav item gets a gradient left rail. */
+.sidebar-tree .current-page > .reference {
+  border-left: 2px solid transparent;
+  border-image: var(--nyora-gradient) 1;
+  font-weight: 600;
+}
+
+/* Links and brand content. */
+a.reference,
+a.reference:visited {
+  text-decoration-color: var(--nyora-border);
+}
+
+a.reference:hover {
+  text-decoration-color: var(--nyora-lilac);
+}
+
+/* Headings use SemiBold Mori. */
+h1,
+h2,
+h3,
+h4,
+.sidebar-brand-text {
+  font-family: var(--font-stack);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* h1 carries the signature gradient. */
+h1 {
+  background: var(--nyora-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---- API signatures ----------------------------------------------------- */
+
+dl.py > dt.sig,
+.sig {
+  border-radius: var(--nyora-radius) !important;
+  border: 1px solid var(--nyora-border);
+}
+
+body[data-theme="dark"] dl.py > dt.sig {
+  background: rgba(255, 252, 225, 0.03);
+}
+
+/* ---- Buttons / copy button --------------------------------------------- */
+
+.copybtn {
+  border-radius: 8px !important;
+}

@@ -1,0 +1,2778 @@
+[
+  {
+    "id": "BANANASCAN_COM",
+    "className": "BananaScan",
+    "title": "BananaScan.Com",
+    "locale": "en",
+    "domain": "bananascans.com",
+    "family": "MmrcmsParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "DANKE",
+    "className": "Danke",
+    "title": "DankeFursLesen",
+    "locale": "en",
+    "domain": "danke.moe",
+    "family": "GuyaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "FMTEAM",
+    "className": "FmTeam",
+    "title": "FmTeam",
+    "locale": "fr",
+    "domain": "fmteam.fr",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HNISCANTRAD",
+    "className": "HniScantrad",
+    "title": "HniScantrad",
+    "locale": "fr",
+    "domain": "hni-scantrad.net",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "TUTTOANIMEMANGA",
+    "className": "TuttoAnimeManga",
+    "title": "TuttoAnimeManga",
+    "locale": "it",
+    "domain": "tuttoanimemanga.net",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "ARCRELIGHT",
+    "className": "ArcRelight",
+    "title": "Arc-Relight",
+    "locale": "en",
+    "domain": "arc-relight.com",
+    "family": "MangAdventureParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "GTOTHEGREATSITE",
+    "className": "GtoTheGreatSite",
+    "title": "GtoTheGreatSite",
+    "locale": "it",
+    "domain": "reader.gtothegreatsite.net",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "GUYACUBARI",
+    "className": "GuyaCubari",
+    "title": "GuyaCubari",
+    "locale": "en",
+    "domain": "guya.cubari.moe",
+    "family": "GuyaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HASTATEAM",
+    "className": "HastaTeam",
+    "title": "HastaTeamDdt",
+    "locale": "it",
+    "domain": "ddt.hastateam.com",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HASTATEAM_READER",
+    "className": "HastaTeamReader",
+    "title": "HastaTeamReader",
+    "locale": "it",
+    "domain": "reader.hastateam.com",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HIVECOMIC",
+    "className": "HiveComic",
+    "title": "HiveComic",
+    "locale": "en",
+    "domain": "hivetoons.org",
+    "family": "IkenParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "LUPITEAM",
+    "className": "LupiTeam",
+    "title": "LupiTeam",
+    "locale": "it",
+    "domain": "lupiteam.net",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MAGUSMANGA",
+    "className": "MagusToon",
+    "title": "MagusToon",
+    "locale": "en",
+    "domain": "magustoon.org",
+    "family": "IkenParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "NYXSCANS",
+    "className": "NyxScans",
+    "title": "Nyx Scans",
+    "locale": "en",
+    "domain": "nyxscans.com",
+    "family": "IkenParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "PHOENIXSCANS",
+    "className": "PhoenixScans",
+    "title": "PhoenixScans",
+    "locale": "it",
+    "domain": "www.phoenixscans.com",
+    "family": "PizzaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "VORTEXSCANS",
+    "className": "VortexScans",
+    "title": "VortexScans",
+    "locale": "en",
+    "domain": "vortexscans.org",
+    "family": "IkenParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "YAOIX3",
+    "className": "YaoiX3",
+    "title": "3XYaoi",
+    "locale": "pt-BR",
+    "domain": "3xyaoi.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "bl/",
+      "datePattern": "dd/MM/yyyy",
+      "tagPrefix": "genero/"
+    }
+  },
+  {
+    "id": "SCANS4U",
+    "className": "Scans4u",
+    "title": "4uScans",
+    "locale": "ar",
+    "domain": "4uscans.com",
+    "family": "KeyoappParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "APENASMAISUMYAOI",
+    "className": "ApenasmaisumYaoi",
+    "title": "Apenasmaisum Yaoi",
+    "locale": "pt-BR",
+    "domain": "apenasmaisumyaoi.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "APKOMIK",
+    "className": "Apkomik",
+    "title": "Apkomik",
+    "locale": "id",
+    "domain": "01.apkomik.com",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "ARABSHENTAI",
+    "className": "ArabsHentai",
+    "title": "Arabs Hentai",
+    "locale": "ar",
+    "domain": "arabshentai.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "manga/",
+      "datePattern": "yyyy-MM-dd",
+      "selectChapter": "#chapter-list a[href*='/manga/'], .oneshot-reader",
+      "selectPage": ".chapter_image img.wp-manga-chapter-img",
+      "selectDesc": "#manga-info .wp-content p",
+      "selectState": "#manga-info div b:contains(\u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0627\u0646\u062c\u0627)",
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "ARCURAFANSUB",
+    "className": "ArcuraFansub",
+    "title": "ArcuraFansub",
+    "locale": "tr",
+    "domain": "arcurafansub.com",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "/seri"
+    }
+  },
+  {
+    "id": "BERSERKSCAN",
+    "className": "BerserkScan",
+    "title": "BerserkScan",
+    "locale": "fr",
+    "domain": "berserkscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "BLUELOCKSCAN",
+    "className": "BlueLockScan",
+    "title": "BlueLockScan",
+    "locale": "fr",
+    "domain": "bluelockscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "CAFECOMYAOI",
+    "className": "CafecomYaoi",
+    "title": "CafecomYaoi",
+    "locale": "pt-BR",
+    "domain": "cafecomyaoi.com.br",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "dd/MM/yyyy"
+    }
+  },
+  {
+    "id": "CHAINSAWMANSCAN",
+    "className": "ChainsawManScan",
+    "title": "ChainsawManScan",
+    "locale": "fr",
+    "domain": "chainsawman-scan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COSMIC_SCANS",
+    "className": "CosmicScans",
+    "title": "CosmicScans.id",
+    "locale": "id",
+    "domain": "lc1.cosmicscans.to",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "DEMONSLAYERSCAN",
+    "className": "DemonSlayerScan",
+    "title": "DemonSlayerScan",
+    "locale": "fr",
+    "domain": "demonslayerscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "DOUJINKU",
+    "className": "DoujinKu",
+    "title": "DoujinKu",
+    "locale": "id",
+    "domain": "doujinku.org",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "DRAGONTEA",
+    "className": "DragonTea",
+    "title": "DragonTea",
+    "locale": "en",
+    "domain": "dragontea.ink",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MM/dd/yyyy"
+    }
+  },
+  {
+    "id": "DRSTONE",
+    "className": "DrStone",
+    "title": "DrStone",
+    "locale": "fr",
+    "domain": "drstone.fr",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "EMPERORSCAN",
+    "className": "EmperorScan",
+    "title": "EmperorScan",
+    "locale": "es",
+    "domain": "imperiomanhua.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MMMM dd, yyyy",
+      "selectDesc": "div.summary_content div.post-content_item:has(h5:contains(Sinopsis)) div",
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "ERO18X",
+    "className": "Ero18x",
+    "title": "Ero18x",
+    "locale": "all",
+    "domain": "ero18x.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "MM/dd"
+    }
+  },
+  {
+    "id": "EVILMANGA",
+    "className": "EvilManga",
+    "title": "EvilManga",
+    "locale": "cs",
+    "domain": "evil-manga.eu",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "d MMMM, yyyy"
+    }
+  },
+  {
+    "id": "EZMANGA",
+    "className": "EzManga",
+    "title": "EzManga",
+    "locale": "en",
+    "domain": "ezmanga.org",
+    "family": "IkenParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "FBSQUADS",
+    "className": "Fbsquads",
+    "title": "FbSquads",
+    "locale": "pt-BR",
+    "domain": "fbsquadx.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "GAFELAND",
+    "className": "Gafeland",
+    "title": "Gafeland",
+    "locale": "tr",
+    "domain": "www.gafeland.com",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "GAIATOON",
+    "className": "GaiaToon",
+    "title": "GaiaToon",
+    "locale": "tr",
+    "domain": "gaiatoon.com",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "GOLGEBAHCESI",
+    "className": "Golgebahcesi",
+    "title": "GolgeBahcesi",
+    "locale": "tr",
+    "domain": "golgebahcesi.com",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HAIKYUU",
+    "className": "Haikyuu",
+    "title": "Haikyuu",
+    "locale": "fr",
+    "domain": "haikyuu.fr",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HELLSPARADISESCAN",
+    "className": "HellsParadiseScan",
+    "title": "HellsParadiseScan",
+    "locale": "fr",
+    "domain": "hellsparadisescan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HENTAISCANTRADVF",
+    "className": "HentaiScantradVf",
+    "title": "Hentai-Scantrad",
+    "locale": "fr",
+    "domain": "hentai.scantrad-vf.cc",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "d MMMM, yyyy"
+    }
+  },
+  {
+    "id": "HENTAIZONE",
+    "className": "Hentaizone",
+    "title": "HentaiZone",
+    "locale": "fr",
+    "domain": "hentaizone.xyz",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "MMM d, yyyy"
+    }
+  },
+  {
+    "id": "HUNTERXHUNTERSCAN",
+    "className": "HunterXHunterScan",
+    "title": "HunterXHunterScan",
+    "locale": "fr",
+    "domain": "hunterxhunterscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HWAGO",
+    "className": "Hwago",
+    "title": "Hwago",
+    "locale": "id",
+    "domain": "01.hwago.xyz",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "d MMMM yyyy"
+    }
+  },
+  {
+    "id": "KINGDOMSCAN",
+    "className": "KingdomScan",
+    "title": "KingdomScan",
+    "locale": "fr",
+    "domain": "kingdomscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "KISSMANGA",
+    "className": "KissManga",
+    "title": "KissManga",
+    "locale": "en",
+    "domain": "kissmanga.in",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "mangalist/",
+      "datePattern": "MMMM dd, yyyy"
+    }
+  },
+  {
+    "id": "KLZ9",
+    "className": "Klz9",
+    "title": "Klz9",
+    "locale": "ja",
+    "domain": "klz9.com",
+    "family": "FmreaderParser",
+    "isNsfw": false,
+    "overrides": {
+      "selectChapter": "tr",
+      "selectPage": "img",
+      "selectDesc": "div.row:contains(Description) p"
+    }
+  },
+  {
+    "id": "MANHWAINDOICU",
+    "className": "ManhwaIndoIcu",
+    "title": "KomikCinta",
+    "locale": "id",
+    "domain": "komikdewasa.art",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "/komik"
+    }
+  },
+  {
+    "id": "KOMIKDEWASA_ONLINE",
+    "className": "KomikDewasa",
+    "title": "KomikDewasa.Online",
+    "locale": "id",
+    "domain": "komikdewasa.art",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "KUNMANGA",
+    "className": "KunManga",
+    "title": "KunManga",
+    "locale": "en",
+    "domain": "kunmanga.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "LEGENDSCANLATIONS",
+    "className": "LegendScanlations",
+    "title": "LegendScanlations",
+    "locale": "es",
+    "domain": "escaneodeleyendas.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd/MM/yyyy"
+    }
+  },
+  {
+    "id": "LEKMANGAORG",
+    "className": "LekMangaOrg",
+    "title": "LekManga.org",
+    "locale": "ar",
+    "domain": "lekmanga.org",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "readcomics/"
+    }
+  },
+  {
+    "id": "LERMANGAS",
+    "className": "Lermangas",
+    "title": "Lermangas",
+    "locale": "pt-BR",
+    "domain": "lermangas.me",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd 'de' MMMMM 'de' yyyy"
+    }
+  },
+  {
+    "id": "LUMOSKOMIK",
+    "className": "LumosKomik",
+    "title": "LumosKomik",
+    "locale": "id",
+    "domain": "02.lumosgg.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "komik/",
+      "datePattern": "dd MMMM yyyy",
+      "tagPrefix": "genre/"
+    }
+  },
+  {
+    "id": "MANGASTARZ",
+    "className": "MangaStarz",
+    "title": "Manga-Starz",
+    "locale": "ar",
+    "domain": "manga-starz.net",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "d MMMM\u060c yyyy",
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "MANGA168",
+    "className": "Manga168",
+    "title": "Manga168",
+    "locale": "th",
+    "domain": "manga168.net",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "MANGAGG",
+    "className": "Mangagg",
+    "title": "MangaGg",
+    "locale": "en",
+    "domain": "mangagg.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MM/dd/yyyy",
+      "tagPrefix": "genre/"
+    }
+  },
+  {
+    "id": "MANGA_SCANTRAD",
+    "className": "MangaScantrad",
+    "title": "MangaScantrad.io",
+    "locale": "fr",
+    "domain": "manga-scantrad.io",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "d MMMM yyyy"
+    }
+  },
+  {
+    "id": "MANGASEHRI",
+    "className": "Mangasehri",
+    "title": "MangaSehri.com",
+    "locale": "tr",
+    "domain": "manga-sehri.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd/MM/yyyy"
+    }
+  },
+  {
+    "id": "MANGASEHRINET",
+    "className": "MangaSehriNet",
+    "title": "MangaSehri.net",
+    "locale": "tr",
+    "domain": "manga-sehri.net",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd MMMM yyyy"
+    }
+  },
+  {
+    "id": "MANGASNOSEKAI",
+    "className": "MangasNoSekai",
+    "title": "MangasNoSekai",
+    "locale": "es",
+    "domain": "mangasnosekai.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MANGASORIGINES",
+    "className": "MangasOrigines",
+    "title": "MangasOrigines.fr",
+    "locale": "fr",
+    "domain": "mangas-origines.fr",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "oeuvre/",
+      "datePattern": "dd/MM/yyyy",
+      "tagPrefix": "manga-genres/"
+    }
+  },
+  {
+    "id": "TOPMANHUA",
+    "className": "TopManhua",
+    "title": "ManhuaTop",
+    "locale": "en",
+    "domain": "manhuatop.org",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "manhua/",
+      "datePattern": "MM/dd/yyyy",
+      "tagPrefix": "manhua-genre/"
+    }
+  },
+  {
+    "id": "MANHUAZONGHE",
+    "className": "ManhuaZonghe",
+    "title": "ManhuaZonghe",
+    "locale": "en",
+    "domain": "www.manhuazonghe.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "manhua/",
+      "tagPrefix": "genre/"
+    }
+  },
+  {
+    "id": "MANHWA_ES",
+    "className": "ManhwaEs",
+    "title": "Manhwa-Es",
+    "locale": "es",
+    "domain": "manhwa-es.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MM/dd"
+    }
+  },
+  {
+    "id": "MANHWACLAN",
+    "className": "ManhwaClan",
+    "title": "ManhwaClan",
+    "locale": "en",
+    "domain": "manhwaclan.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MMMM dd, yyyy"
+    }
+  },
+  {
+    "id": "MANHWALAND",
+    "className": "ManhwaLand",
+    "title": "ManhwaLand.vip",
+    "locale": "id",
+    "domain": "www.manhwaland.baby",
+    "family": "MangaReaderParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "MMM d, yyyy"
+    }
+  },
+  {
+    "id": "MANHWALATINO",
+    "className": "ManhwaLatino",
+    "title": "ManhwaLatino",
+    "locale": "es",
+    "domain": "manhwa-latino.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MM/dd",
+      "selectPage": "div.page-break img.wp-manga-chapter-img"
+    }
+  },
+  {
+    "id": "MANHWAONLINE",
+    "className": "ManhwaOnline",
+    "title": "ManhwaOnline",
+    "locale": "es",
+    "domain": "manhwa-online.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MMMM dd, yyyy"
+    }
+  },
+  {
+    "id": "MANHWARAW",
+    "className": "ManhwaRaw",
+    "title": "ManhwaRaw",
+    "locale": "all",
+    "domain": "manhwa-raw.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "MM/dd"
+    }
+  },
+  {
+    "id": "MANHWATOP",
+    "className": "ManhwaTop",
+    "title": "ManhwaTop",
+    "locale": "en",
+    "domain": "manhwatop.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "postReq": true
+    }
+  },
+  {
+    "id": "MINITWOSCAN",
+    "className": "MiniTwoScan",
+    "title": "MiniTwoScan",
+    "locale": "pt-BR",
+    "domain": "minitwoscan.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "postReq": true,
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "MUGIWARASOFICIAL",
+    "className": "MugiwarasOficial",
+    "title": "MugiwarasOficial",
+    "locale": "pt-BR",
+    "domain": "mugiwarasoficial.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MYHEROACADEMIASCAN",
+    "className": "MyHeroacAdemiaScan",
+    "title": "MyHeroacAdemiaScan",
+    "locale": "fr",
+    "domain": "myheroacademiascan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "NECROSCANS",
+    "className": "NecroScans",
+    "title": "NecroScans",
+    "locale": "en",
+    "domain": "necroscans.com",
+    "family": "KeyoappParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "NETTRUYEN",
+    "className": "NetTruyen",
+    "title": "NetTruyen",
+    "locale": "vi",
+    "domain": "nettruyenar.com",
+    "family": "WpComicsParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "NHATTRUYENVN",
+    "className": "NhatTruyenVN",
+    "title": "NhatTruyenVN",
+    "locale": "vi",
+    "domain": "nhattruyenqq.com",
+    "family": "WpComicsParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "NOCSUMMER",
+    "className": "Nocsummer",
+    "title": "NocturneSummer",
+    "locale": "pt-BR",
+    "domain": "nocfsb.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "dd 'de' MMMMM 'de' yyyy"
+    }
+  },
+  {
+    "id": "NOVELCROW",
+    "className": "Novelcrow",
+    "title": "NovelCrow",
+    "locale": "en",
+    "domain": "novelcrow.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "tagPrefix": "comic-genre/"
+    }
+  },
+  {
+    "id": "ONEPUNCHMANSCAN",
+    "className": "OnePunchManScan",
+    "title": "OnePunchManScan",
+    "locale": "fr",
+    "domain": "onepunchmanscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "PATIMANGA",
+    "className": "PatiManga",
+    "title": "PatiManga",
+    "locale": "tr",
+    "domain": "www.patimanga.com",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "RAGNARSCANS",
+    "className": "Ragnarscans",
+    "title": "Ragnarscans",
+    "locale": "tr",
+    "domain": "ragnarscans.com",
+    "family": "InitMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "RAIJINSCANS",
+    "className": "RaijinScans",
+    "title": "RaijinScans",
+    "locale": "fr",
+    "domain": "raijin-scans.fr",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd/MM/yyyy",
+      "tagPrefix": "genre/",
+      "selectChapter": "ul.scroll-sm li.item",
+      "selectPage": "div.protected-image-data",
+      "selectDesc": "div.description-content",
+      "selectState": "div.stat-item:has(span:contains(\u00c9tat du titre)) span.manga",
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "READCOMICSONLINE",
+    "className": "ReadComicsOnline",
+    "title": "ReadComicsOnline.ru",
+    "locale": "en",
+    "domain": "readcomicsonline.ru",
+    "family": "MmrcmsParser",
+    "isNsfw": false,
+    "overrides": {
+      "selectState": "dt:contains(Status)"
+    }
+  },
+  {
+    "id": "REZOSCANS",
+    "className": "RezoScans",
+    "title": "RezoScans",
+    "locale": "en",
+    "domain": "rezoscans.com",
+    "family": "KeyoappParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SAKAMOTODAYS",
+    "className": "SakamotoDays",
+    "title": "SakamotoDays",
+    "locale": "fr",
+    "domain": "sakamotodays.fr",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SCANBORUTO",
+    "className": "ScanBoruto",
+    "title": "ScanBoruto",
+    "locale": "fr",
+    "domain": "scanboruto.fr",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SCANJUJUTSUKAISEN",
+    "className": "ScanJujutsuKaisen",
+    "title": "ScanJujutsuKaisen",
+    "locale": "fr",
+    "domain": "scanjujutsukaisen.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SCANVF",
+    "className": "ScanVf",
+    "title": "ScanVf",
+    "locale": "fr",
+    "domain": "www.scan-vf.net",
+    "family": "MmrcmsParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SHIRAKAMI",
+    "className": "Shirakami",
+    "title": "Shirakami",
+    "locale": "id",
+    "domain": "shirakami.xyz",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SHIRO_DOUJIN",
+    "className": "ShiroDoujin",
+    "title": "ShiroDoujin",
+    "locale": "id",
+    "domain": "shirodoujin.com",
+    "family": "ZMangaParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "SNKSCAN",
+    "className": "SnkScan",
+    "title": "SnkScan",
+    "locale": "fr",
+    "domain": "snkscan.com",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SOULSCANS",
+    "className": "SoulScans",
+    "title": "SoulScans",
+    "locale": "id",
+    "domain": "soulscans.my.id",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MMM d, yyyy"
+    }
+  },
+  {
+    "id": "SUSHISCAN",
+    "className": "SushiScan",
+    "title": "SushiScan.Net",
+    "locale": "fr",
+    "domain": "sushiscan.net",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "/catalogue",
+      "datePattern": "MMM d, yyyy"
+    }
+  },
+  {
+    "id": "THEBLANK",
+    "className": "TheBlank",
+    "title": "TheBlank",
+    "locale": "en",
+    "domain": "theblank.net",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "dd/MM/yyyy"
+    }
+  },
+  {
+    "id": "THUNDERSCANS",
+    "className": "ThunderScans",
+    "title": "ThunderScans",
+    "locale": "ar",
+    "domain": "lavascans.com",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "/browse-manga",
+      "datePattern": "yyyy/MM/dd",
+      "selectMangaList": "article.legend-card",
+      "selectMangaListImg": "img.legend-img",
+      "selectMangaListTitle": "h3.legend-title a",
+      "selectChapter": ".ch-list-grid .ch-item"
+    }
+  },
+  {
+    "id": "TOOMICSSC",
+    "className": "TooMicsSc",
+    "title": "TooMicsSc",
+    "locale": "zh-Hans",
+    "domain": "toomics.com/sc",
+    "family": "HotComicsParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "TOOMICSTC",
+    "className": "TooMicsTc",
+    "title": "TooMicsTc",
+    "locale": "zh-Hant",
+    "domain": "toomics.com/tc",
+    "family": "HotComicsParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "TOONFR",
+    "className": "ToonFr",
+    "title": "ToonFr",
+    "locale": "fr",
+    "domain": "toonfr.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "webtoon/",
+      "datePattern": "MMM d",
+      "tagPrefix": "webtoon-genre/"
+    }
+  },
+  {
+    "id": "TOONGOD",
+    "className": "ToonGod",
+    "title": "ToonGod",
+    "locale": "en",
+    "domain": "www.toongod.org",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "webtoon/",
+      "datePattern": "d MMM yyyy",
+      "tagPrefix": "webtoon-genre/",
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "TOONILY",
+    "className": "Toonily",
+    "title": "Toonily",
+    "locale": "en",
+    "domain": "toonily.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "webtoon/",
+      "datePattern": "MMMM dd, yyyy",
+      "tagPrefix": "webtoon-genre/"
+    }
+  },
+  {
+    "id": "TOONIZY",
+    "className": "Toonizy",
+    "title": "Toonizy",
+    "locale": "en",
+    "domain": "toonizy.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "webtoon/",
+      "datePattern": "MMM d, yy"
+    }
+  },
+  {
+    "id": "TOPCOMICPORNO",
+    "className": "TopComicPorno",
+    "title": "TopComicPorno",
+    "locale": "es",
+    "domain": "topcomicporno.net",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "MMM dd, yy"
+    }
+  },
+  {
+    "id": "TOPTRUYEN",
+    "className": "TopTruyen",
+    "title": "TopTruyen",
+    "locale": "vi",
+    "domain": "www.toptruyentv11.com",
+    "family": "WpComicsParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd/MM/yyyy"
+    }
+  },
+  {
+    "id": "UTOON",
+    "className": "UToon",
+    "title": "UToon",
+    "locale": "en",
+    "domain": "utoon.net",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "dd MMM"
+    }
+  },
+  {
+    "id": "VINLANDSAGA",
+    "className": "VinlandSaga",
+    "title": "VinlandSaga",
+    "locale": "fr",
+    "domain": "vinlandsaga.fr",
+    "family": "OneMangaParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "WALPURGISCAN",
+    "className": "Walpurgiscan",
+    "title": "WalpurgiScan",
+    "locale": "it",
+    "domain": "www.walpurgiscan.it",
+    "family": "MangaReaderParser",
+    "isNsfw": false,
+    "overrides": {
+      "datePattern": "MMM d, yyyy"
+    }
+  },
+  {
+    "id": "WEBDEXSCANS",
+    "className": "WebDexScans",
+    "title": "WebDexScans",
+    "locale": "en",
+    "domain": "webdexscans.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "WEBTOONXYZ",
+    "className": "WebtoonXyz",
+    "title": "Webtoon.xyz",
+    "locale": "en",
+    "domain": "www.webtoon.xyz",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "read/",
+      "datePattern": "d MMM yyyy",
+      "tagPrefix": "webtoon-genre/"
+    }
+  },
+  {
+    "id": "WEBTOONEMPIRE",
+    "className": "WebtoonEmpire",
+    "title": "WebtoonEmpire",
+    "locale": "ar",
+    "domain": "webtoonempire-bl.com",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "listUrl": "webtoon/",
+      "datePattern": "d MMMM\u060c yyyy",
+      "withoutAjax": true
+    }
+  },
+  {
+    "id": "YAOIMANGAOKU",
+    "className": "YaoiMangaOku",
+    "title": "YaoiMangaOku",
+    "locale": "tr",
+    "domain": "yaoimangaoku.net",
+    "family": "MadaraParser",
+    "isNsfw": true,
+    "overrides": {
+      "datePattern": "d MMMM yyyy"
+    }
+  },
+  {
+    "id": "YKMH",
+    "className": "Ykmh",
+    "title": "Ykmh",
+    "locale": "zh-Hans",
+    "domain": "www.ykmh.net",
+    "family": "SinmhParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MANGANATO_GG",
+    "className": "ManganatoGg",
+    "title": "Manganato (.gg)",
+    "locale": "en",
+    "domain": "www.manganato.gg",
+    "family": "MangaBoxParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "ASURASCANS_US",
+    "className": "AsuraScansUs",
+    "title": "Asura Scans",
+    "locale": "en",
+    "domain": "asurascans.com",
+    "family": "MadaraParser",
+    "isNsfw": false,
+    "overrides": {
+      "listUrl": "browse/",
+      "tagPrefix": "genres/"
+    }
+  },
+  {
+    "id": "MANGAFIRE_EN",
+    "className": "MangaFire",
+    "title": "MangaFire",
+    "locale": "en",
+    "domain": "mangafire.to",
+    "family": "MangaFireParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MANGAFIRE_JA",
+    "className": "MangaFireJa",
+    "title": "MangaFire (JA)",
+    "locale": "ja",
+    "domain": "mangafire.to",
+    "family": "MangaFireParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "ALPHACENTAURI",
+    "className": "AlphaCentauri",
+    "title": "Alpha Centauri",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "alphacentauri",
+      "basePath": "/alphacentauri"
+    }
+  },
+  {
+    "id": "AMEFANSUB",
+    "className": "AmeFansub",
+    "title": "Ame Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "ame",
+      "basePath": "/ame"
+    }
+  },
+  {
+    "id": "ANIMUNOMANSEBIA",
+    "className": "AnimuNoMansebia",
+    "title": "Animu No Mansebia",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "animunm",
+      "basePath": "/animunm"
+    }
+  },
+  {
+    "id": "ANTIPATREONSCAN",
+    "className": "AntiPatreonScan",
+    "title": "AntiPatreon Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "antipatreon",
+      "basePath": "/antipatreon"
+    }
+  },
+  {
+    "id": "ARIGATOSA",
+    "className": "ArigatoSA",
+    "title": "Arigato S.A",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "arigatosa",
+      "basePath": "/arigatosa"
+    }
+  },
+  {
+    "id": "ASPERUASTRADUS",
+    "className": "AsperuasTradus",
+    "title": "Asperuas Tradus",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "asperuastradus",
+      "basePath": "/asperuastradus"
+    }
+  },
+  {
+    "id": "ASUKALANGLEYTRANSLATIONS",
+    "className": "AsukaLangleyTranslations",
+    "title": "Asuka Langley Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "asukatranslations",
+      "basePath": "/asukatranslations"
+    }
+  },
+  {
+    "id": "AZUREBLOOM",
+    "className": "AzureBloom",
+    "title": "Azure Bloom",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "azurebloom",
+      "basePath": "/azurebloom"
+    }
+  },
+  {
+    "id": "BAKAGUYASCANLATION",
+    "className": "BakaguyaScanlation",
+    "title": "Bakaguya Scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "bakaguya",
+      "basePath": "/bakaguya"
+    }
+  },
+  {
+    "id": "BEEGGIMP",
+    "className": "BeegGimp",
+    "title": "Beeg Gimp",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "beeggimp",
+      "basePath": "/beeggimp"
+    }
+  },
+  {
+    "id": "BEYONDBIRTHDAYSUBS",
+    "className": "BeyondBirthdaySubs",
+    "title": "Beyond Birthday Subs",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "beyondbirthdaysubs",
+      "basePath": "/beyondbirthdaysubs"
+    }
+  },
+  {
+    "id": "BONBONSCANLATION",
+    "className": "BonbonScanlation",
+    "title": "Bonbon Scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "bonbonscanlation",
+      "basePath": "/bonbonscanlation"
+    }
+  },
+  {
+    "id": "BOREDSLAYERSCAN",
+    "className": "BoredSlayerScan",
+    "title": "Bored Slayer Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "boredslayerscan",
+      "basePath": "/boredslayerscan"
+    }
+  },
+  {
+    "id": "BREAKSCAN",
+    "className": "BreakScan",
+    "title": "Break Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "breakscan",
+      "basePath": "/breakscan"
+    }
+  },
+  {
+    "id": "CATHALTRADUCCIONES",
+    "className": "CathalTraducciones",
+    "title": "CathalTraducciones",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "cathaltl",
+      "basePath": "/cathaltl"
+    }
+  },
+  {
+    "id": "CHIBISSCAN",
+    "className": "ChibisScan",
+    "title": "Chibis Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "chibis",
+      "basePath": "/chibis"
+    }
+  },
+  {
+    "id": "CHUNCHUNMARUTRANSLATIONS",
+    "className": "ChunchunmaruTranslations",
+    "title": "Chunchunmaru Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "chunchunmarutl",
+      "basePath": "/chunchunmarutl"
+    }
+  },
+  {
+    "id": "CRIMSONSCAN",
+    "className": "CrimsonScan",
+    "title": "Crimson Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "crimsonscan",
+      "basePath": "/crimsonscan"
+    }
+  },
+  {
+    "id": "CULTOASLANESH",
+    "className": "CultoASlanesh",
+    "title": "Culto a Slanesh",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "cultoaslanesh",
+      "basePath": "/cultoaslanesh"
+    }
+  },
+  {
+    "id": "DAISUKINAFANSUB",
+    "className": "DaisukiNaFansub",
+    "title": "Daisuki na Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "dnfansub",
+      "basePath": "/dnfansub"
+    }
+  },
+  {
+    "id": "DALETHPROJECT",
+    "className": "DalethProject",
+    "title": "Daleth Project",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "nameless",
+      "basePath": "/nameless"
+    }
+  },
+  {
+    "id": "DOKJASHEARTSCANLATION",
+    "className": "DokjasheartScanlation",
+    "title": "Dokjasheart scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "dokjasheart",
+      "basePath": "/dokjasheart"
+    }
+  },
+  {
+    "id": "DORAGONNOTENSEI",
+    "className": "DORAGONNOTENSEI",
+    "title": "DORAGON NO TENSEI",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "dnt",
+      "basePath": "/dnt"
+    }
+  },
+  {
+    "id": "DOUJINCLUB",
+    "className": "Doujinclub",
+    "title": "Doujinclub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "doujinclub",
+      "basePath": "/doujinclub"
+    }
+  },
+  {
+    "id": "ELJEKSREAL",
+    "className": "Eljeksreal",
+    "title": "Eljeksreal",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "eljeksreal",
+      "basePath": "/eljeksreal"
+    }
+  },
+  {
+    "id": "ELSCANSEMANAL",
+    "className": "ElScanSemanal",
+    "title": "El Scan Semanal",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "elscansemanal",
+      "basePath": "/elscansemanal"
+    }
+  },
+  {
+    "id": "ERISGREYRATTRANSLATIONS",
+    "className": "ErisGreyratTranslations",
+    "title": "Eris Greyrat Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "erisgreyrattranslations",
+      "basePath": "/erisgreyrattranslations"
+    }
+  },
+  {
+    "id": "FAFA",
+    "className": "Fafa",
+    "title": "Fafa",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "fafa",
+      "basePath": "/fafa"
+    }
+  },
+  {
+    "id": "FAXXTRADUCE",
+    "className": "FaxxTraduce",
+    "title": "FaxxTraduce",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "faxxtraduce",
+      "basePath": "/faxxtraduce"
+    }
+  },
+  {
+    "id": "FSTAKESUKYAN",
+    "className": "FstakeSukyan",
+    "title": "Fstake Sukyan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "fstakesukyan",
+      "basePath": "/fstakesukyan"
+    }
+  },
+  {
+    "id": "GLOWI",
+    "className": "Glowi",
+    "title": "Glowi",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "glowi",
+      "basePath": "/glowi"
+    }
+  },
+  {
+    "id": "HACHIMITSUTSUKI",
+    "className": "HachimitsuTsuki",
+    "title": "Hachimitsu Tsuki",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "shojopapers",
+      "basePath": "/shojopapers"
+    }
+  },
+  {
+    "id": "HANGYAKUNOSCANLATION",
+    "className": "HangyakuNoScanlation",
+    "title": "Hangyaku no Scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "hangyakunoscanlation",
+      "basePath": "/hangyakunoscanlation"
+    }
+  },
+  {
+    "id": "HARUSCAN",
+    "className": "HaruScan",
+    "title": "Haru Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "haruscan",
+      "basePath": "/haruscan"
+    }
+  },
+  {
+    "id": "HOMOCDRS",
+    "className": "HOMOcdrs",
+    "title": "HOMOcdrs",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "hmcdrscan",
+      "basePath": "/hmcdrscan"
+    }
+  },
+  {
+    "id": "JOSHSCAN",
+    "className": "JoshScan",
+    "title": "JoshScan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "joshscan",
+      "basePath": "/joshscan"
+    }
+  },
+  {
+    "id": "KAISERZSCANLATION",
+    "className": "KaiserZScanlation",
+    "title": "KaiserZ Scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "kaizscan",
+      "basePath": "/kaizscan"
+    }
+  },
+  {
+    "id": "KAIZENTRANSLATIONS",
+    "className": "KaizenTranslations",
+    "title": "Kaizen Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "kaizen",
+      "basePath": "/kaizen"
+    }
+  },
+  {
+    "id": "KATSUDONMANGA",
+    "className": "KatsudonManga",
+    "title": "KatsudonManga",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "katsudonmanga",
+      "basePath": "/katsudonmanga"
+    }
+  },
+  {
+    "id": "KAWARAGINOFANSUB",
+    "className": "KawaragiNoFansub",
+    "title": "Kawaragi No Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "kawaraginofansub",
+      "basePath": "/kawaraginofansub"
+    }
+  },
+  {
+    "id": "KINGDOMDARKSCAN",
+    "className": "KingdomDarkScan",
+    "title": "Kingdom Dark Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "kingdomdarkscan",
+      "basePath": "/kingdomdarkscan"
+    }
+  },
+  {
+    "id": "KIRISHIMAFANSUB",
+    "className": "KirishimaFansub",
+    "title": "Kirishima Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "kirishimafansub",
+      "basePath": "/kirishimafansub"
+    }
+  },
+  {
+    "id": "KORONESUKI",
+    "className": "Koronesuki",
+    "title": "Koronesuki",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "koronesuki",
+      "basePath": "/koronesuki"
+    }
+  },
+  {
+    "id": "KRAZYTOON",
+    "className": "KRazytoon",
+    "title": "KRazytoon",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "krazytoon",
+      "basePath": "/krazytoon"
+    }
+  },
+  {
+    "id": "KURENAIPROJECT",
+    "className": "KurenaiProject",
+    "title": "Kurenai Project",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "kurenaiproject",
+      "basePath": "/kurenaiproject"
+    }
+  },
+  {
+    "id": "KUROTRANSLATIONS",
+    "className": "KuroTranslations",
+    "title": "KuroTranslations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "kurotranslations",
+      "basePath": "/kurotranslations"
+    }
+  },
+  {
+    "id": "LABIBLIOTECADEODIN",
+    "className": "LaBibliotecaDeOdin",
+    "title": "La Biblioteca de Odin",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "labibliotecadeodin",
+      "basePath": "/labibliotecadeodin"
+    }
+  },
+  {
+    "id": "LASPROFANADASSCAN",
+    "className": "LasProfanadasScan",
+    "title": "Las Profanadas Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "profanadasscan",
+      "basePath": "/profanadasscan"
+    }
+  },
+  {
+    "id": "LASTEXILESCAN",
+    "className": "LastExileScan",
+    "title": "Last Exile Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "lastexilescan",
+      "basePath": "/lastexilescan"
+    }
+  },
+  {
+    "id": "LIMBOSCANLATION",
+    "className": "LimboScanlation",
+    "title": "Limbo Scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "limbo",
+      "basePath": "/limbo"
+    }
+  },
+  {
+    "id": "LOLIETAZURATRANSLATIONS",
+    "className": "LolietAzuraTranslations",
+    "title": "Loliet Azura Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "lolietazura",
+      "basePath": "/lolietazura"
+    }
+  },
+  {
+    "id": "MICHUSCAN",
+    "className": "MichuScan",
+    "title": "Michu Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "michuscan",
+      "basePath": "/michuscan"
+    }
+  },
+  {
+    "id": "NEROTRANSLATIONS",
+    "className": "NeroTranslations",
+    "title": "NeroTranslations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "nerotranslate",
+      "basePath": "/nerotranslate"
+    }
+  },
+  {
+    "id": "OKAMISCAN",
+    "className": "OkamiScan",
+    "title": "Okami.Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "okami",
+      "basePath": "/okami"
+    }
+  },
+  {
+    "id": "OMEGASCANLATION",
+    "className": "OmegaScanlation",
+    "title": "Omega Scanlation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "omegascanlation",
+      "basePath": "/omegascanlation"
+    }
+  },
+  {
+    "id": "PHANTOMNOFANSUB",
+    "className": "PhantomNoFansub",
+    "title": "Phantom No Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "phantomnofansub",
+      "basePath": "/phantomnofansub"
+    }
+  },
+  {
+    "id": "PINKGARDENTRANSLATION",
+    "className": "PinkGardenTranslation",
+    "title": "PinkGarden Translation",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "pinkgardentranslation",
+      "basePath": "/pinkgardentranslation"
+    }
+  },
+  {
+    "id": "PUCHISCAN",
+    "className": "PuchiScan",
+    "title": "PuchiScan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "puchi",
+      "basePath": "/puchi"
+    }
+  },
+  {
+    "id": "RAKUENTRANSLATIONS",
+    "className": "RakuenTranslations",
+    "title": "Rakuen Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "rakuen",
+      "basePath": "/rakuen"
+    }
+  },
+  {
+    "id": "SACACHISPA",
+    "className": "SACACHISPA",
+    "title": "SACACHISPA",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "sacachispa",
+      "basePath": "/sacachispa"
+    }
+  },
+  {
+    "id": "SAITOUTRANSLATIONS",
+    "className": "SaitouTranslations",
+    "title": "Saitou Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "saitoutranslations",
+      "basePath": "/saitoutranslations"
+    }
+  },
+  {
+    "id": "SCANREVIEW",
+    "className": "ScanReview",
+    "title": "Scan Review",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "scanreview",
+      "basePath": "/scanreview"
+    }
+  },
+  {
+    "id": "SCANSHUB",
+    "className": "ScansHub",
+    "title": "ScansHub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "scanshub",
+      "basePath": "/scanshub"
+    }
+  },
+  {
+    "id": "SCANSTARTS",
+    "className": "ScanStarts",
+    "title": "Scan Starts",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "scanstarts",
+      "basePath": "/scanstarts"
+    }
+  },
+  {
+    "id": "SCANZ",
+    "className": "ScanZ",
+    "title": "ScanZ",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "scanz",
+      "basePath": "/scanz"
+    }
+  },
+  {
+    "id": "SECTABLSCAN",
+    "className": "SectaBLScan",
+    "title": "Secta BL Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "sectablscan",
+      "basePath": "/sectablscan"
+    }
+  },
+  {
+    "id": "SEINENDEN",
+    "className": "SeinenDen",
+    "title": "Seinen Den",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "seinen-den",
+      "basePath": "/seinen-den"
+    }
+  },
+  {
+    "id": "SEORCHOFLI",
+    "className": "SeOrChofli",
+    "title": "Se\u00f1or Chofli",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "sirchofli",
+      "basePath": "/sirchofli"
+    }
+  },
+  {
+    "id": "SENSHIMANGA",
+    "className": "SenshiManga",
+    "title": "Senshi Manga",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "senshimanga",
+      "basePath": "/senshimanga"
+    }
+  },
+  {
+    "id": "SHOSHINSHASCANS",
+    "className": "ShoShinShaScans",
+    "title": "ShoShinSha Scans",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "shoshinshascans",
+      "basePath": "/shoshinshascans"
+    }
+  },
+  {
+    "id": "6IANFRANC9",
+    "className": "6ianfranc9",
+    "title": "6ianfranc9",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "6ianfranc9",
+      "basePath": "/6ianfranc9"
+    }
+  },
+  {
+    "id": "SOULCRAFTFANSUB",
+    "className": "SoulCraftFansub",
+    "title": "Soul Craft Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "soulcraft",
+      "basePath": "/soulcraft"
+    }
+  },
+  {
+    "id": "SPACEFANSUB",
+    "className": "SpaceFansub",
+    "title": "Space Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "spacefansub",
+      "basePath": "/spacefansub"
+    }
+  },
+  {
+    "id": "STRAYDOG608",
+    "className": "StrayDog608",
+    "title": "StrayDog608",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "straydog608",
+      "basePath": "/straydog608"
+    }
+  },
+  {
+    "id": "SWEETICECREAM",
+    "className": "SweetIceCream",
+    "title": "Sweet Ice Cream",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "sweeticecream",
+      "basePath": "/sweeticecream"
+    }
+  },
+  {
+    "id": "TEMPLODEJENY",
+    "className": "TemploDeJeny",
+    "title": "Templo de Jeny",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "templodejeny",
+      "basePath": "/templodejeny"
+    }
+  },
+  {
+    "id": "TEMPLODESCARLET",
+    "className": "TemploDeScarlet",
+    "title": "Templo de Scarlet",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "templodescarlet",
+      "basePath": "/templodescarlet"
+    }
+  },
+  {
+    "id": "TERRASCANS",
+    "className": "TerraScans",
+    "title": "Terra Scans",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "terrascans",
+      "basePath": "/terrascans"
+    }
+  },
+  {
+    "id": "THEBLUEBOX",
+    "className": "TheBlueBox",
+    "title": "TheBlueBox",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "thebluebox",
+      "basePath": "/thebluebox"
+    }
+  },
+  {
+    "id": "THEGRIMORIODELAWITCH",
+    "className": "TheGrimorioDeLaWitch",
+    "title": "The grimorio de la witch",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "tgdlw",
+      "basePath": "/tgdlw"
+    }
+  },
+  {
+    "id": "TMAT",
+    "className": "TMAT",
+    "title": "TMAT",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "tamt",
+      "basePath": "/tamt"
+    }
+  },
+  {
+    "id": "TRADUCCIONESMUYLENTAS",
+    "className": "TraduccionesMuyLentas",
+    "title": "Traducciones Muy Lentas",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "tmlentas",
+      "basePath": "/tmlentas"
+    }
+  },
+  {
+    "id": "TRADUCCIONESPALTANOBU",
+    "className": "TraduccionesPaltaNobu",
+    "title": "Traducciones PaltaNobu",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "paltanobu",
+      "basePath": "/paltanobu"
+    }
+  },
+  {
+    "id": "TSUKINOMUSUMESCAN",
+    "className": "TsukiNoMusumeScan",
+    "title": "Tsuki No Musume Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "tsukinomusumescan",
+      "basePath": "/tsukinomusumescan"
+    }
+  },
+  {
+    "id": "TUERIZOTRADUCCIONES",
+    "className": "TuErizoTraducciones",
+    "title": "Tu Erizo Traducciones",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "tuerizotraducciones",
+      "basePath": "/tuerizotraducciones"
+    }
+  },
+  {
+    "id": "VIRREINATODEUNKNOWNREALMFANSUB",
+    "className": "VirreinatoDeUnknownRealmFansub",
+    "title": "Virreinato de Unknown Realm Fansub",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "unknown-realm-fansub",
+      "basePath": "/unknown-realm-fansub"
+    }
+  },
+  {
+    "id": "WAIFUSWITHSALSASCAN",
+    "className": "WaifusWithSalsaScan",
+    "title": "WaifusWithSalsa Scan",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "wws",
+      "basePath": "/wws"
+    }
+  },
+  {
+    "id": "WEEPINGANGEL",
+    "className": "WeepingAngel",
+    "title": "Weeping Angel",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": true,
+    "overrides": {
+      "organizationDomain": "weepingangel",
+      "basePath": "/weepingangel"
+    }
+  },
+  {
+    "id": "WHITEPEARLTRANSLATIONS",
+    "className": "WhitePearlTranslations",
+    "title": "White Pearl Translations",
+    "locale": "es",
+    "domain": "capibaratraductor.com",
+    "family": "LectorMoeParser",
+    "isNsfw": false,
+    "overrides": {
+      "organizationDomain": "whitepearl",
+      "basePath": "/whitepearl"
+    }
+  },
+  {
+    "id": "COMICBORDER",
+    "className": "ComicBorder",
+    "title": "Comic Border",
+    "locale": "ja",
+    "domain": "comicborder.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICDAYS",
+    "className": "ComicDays",
+    "title": "Comic Days",
+    "locale": "ja",
+    "domain": "comic-days.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICEARTHSTAR",
+    "className": "ComicEarthStar",
+    "title": "Comic Earth Star",
+    "locale": "ja",
+    "domain": "comic-earthstar.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICGARDO",
+    "className": "ComicGardo",
+    "title": "Comic Gardo",
+    "locale": "ja",
+    "domain": "comic-gardo.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICYOURS",
+    "className": "ComicYOURs",
+    "title": "Comic Y-OURs",
+    "locale": "ja",
+    "domain": "comic-y-ours.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMIPLEX",
+    "className": "Comiplex",
+    "title": "Comiplex",
+    "locale": "ja",
+    "domain": "viewer.heros-web.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "ICHICOMI",
+    "className": "Ichicomi",
+    "title": "Ichicomi",
+    "locale": "ja",
+    "domain": "ichicomi.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "KURAGEBUNCH",
+    "className": "KurageBunch",
+    "title": "Kurage Bunch",
+    "locale": "ja",
+    "domain": "kuragebunch.com",
+    "family": "GigaViewerParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "MAGCOMI",
+    "className": "MAGCOMI",
+    "title": "MAGCOMI",
+    "locale": "ja",
+    "domain": "magcomi.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SHONENJUMP",
+    "className": "ShonenJump",
+    "title": "Shonen Jump+",
+    "locale": "ja",
+    "domain": "shonenjumpplus.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "SUNDAYWEBEVERY",
+    "className": "SundayWebEvery",
+    "title": "Sunday Web Every",
+    "locale": "ja",
+    "domain": "www.sunday-webry.com",
+    "family": "GigaViewerParser",
+    "isNsfw": true,
+    "overrides": {}
+  },
+  {
+    "id": "TONARINOYOUNGJUMP",
+    "className": "TonariNoYoungJump",
+    "title": "Tonari no Young Jump",
+    "locale": "ja",
+    "domain": "tonarinoyj.jp",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "ZENON",
+    "className": "Zenon",
+    "title": "Zenon",
+    "locale": "ja",
+    "domain": "comic-zenon.com",
+    "family": "GigaViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "WEBTOONS",
+    "className": "Webtoon",
+    "title": "WEBTOON",
+    "locale": "en",
+    "domain": "www.webtoons.com",
+    "family": "WebtoonParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICGROWL",
+    "className": "ComicGrowl",
+    "title": "Comic Growl",
+    "locale": "all",
+    "domain": "comic-growl.com",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "BIGCOMICS",
+    "className": "BigComics",
+    "title": "Big Comics",
+    "locale": "ja",
+    "domain": "bigcomics.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICMEDU",
+    "className": "ComicMeDu",
+    "title": "Comic MeDu",
+    "locale": "ja",
+    "domain": "comic-medu.com",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICPASH",
+    "className": "ComicPash",
+    "title": "Comic Pash",
+    "locale": "ja",
+    "domain": "comicpash.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "COMICRIDE",
+    "className": "ComicRide",
+    "title": "Comic Ride",
+    "locale": "ja",
+    "domain": "comicride.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "HANATOYUME",
+    "className": "HanaToYume",
+    "title": "Hana To Yume+",
+    "locale": "ja",
+    "domain": "hanayume.com",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "JNBOOKS",
+    "className": "JNBooks",
+    "title": "J-N Books",
+    "locale": "ja",
+    "domain": "comic.j-nbooks.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "KIMICOMI",
+    "className": "KimiComi",
+    "title": "KimiComi",
+    "locale": "ja",
+    "domain": "kimicomi.com",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MAGKAN",
+    "className": "MagKan",
+    "title": "MagKan",
+    "locale": "ja",
+    "domain": "kansai.mag-garden.co.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "MANGABANGCOMICS",
+    "className": "MangaBangComics",
+    "title": "MangaBang Comics",
+    "locale": "ja",
+    "domain": "comics.manga-bang.com",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "CHAMPIONCROSS",
+    "className": "ChampionCross",
+    "title": "Champion Cross",
+    "locale": "ja",
+    "domain": "championcross.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "RIMACOMIPLUS",
+    "className": "RimacomiPlus",
+    "title": "RimacomiPlus",
+    "locale": "ja",
+    "domain": "rimacomiplus.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "TAKECOMIC",
+    "className": "TakeComic",
+    "title": "TakeComic",
+    "locale": "ja",
+    "domain": "takecomic.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "YOUNGANIMAL",
+    "className": "YoungAnimal",
+    "title": "Young Animal",
+    "locale": "ja",
+    "domain": "younganimal.com",
+    "family": "ComiciViewerParser",
+    "isNsfw": false,
+    "overrides": {}
+  },
+  {
+    "id": "YOUNGCHAMPION",
+    "className": "YoungChampion",
+    "title": "Young Champion",
+    "locale": "ja",
+    "domain": "youngchampion.jp",
+    "family": "ComiciViewerParser",
+    "isNsfw": true,
+    "overrides": {}
+  }
+]

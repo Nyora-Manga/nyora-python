@@ -1,0 +1,105 @@
+[project]
+name = "nyora"
+version = "0.3.1"
+description = "Pure Python implementation of the Nyora manga engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-only" }
+authors = [
+    { name = "Md Hasan Raza" },
+]
+keywords = ["nyora", "manga", "sdk", "tui"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "httpx>=0.27.0",
+    "platformdirs>=4.2.0",
+    "quickjs>=1.19.4",
+    "selectolax>=0.4.10",
+    "typing-extensions>=4.12.0",
+]
+
+[project.optional-dependencies]
+tui = [
+    "rich>=13.7.0",
+    "textual>=0.86.0",
+    "textual-image>=0.13.2; python_version >= '3.12'",
+    "rich-pixels>=3.0.1",
+    "pillow>=10.0.0",
+]
+docs = [
+    "sphinx>=7.3",
+    "furo>=2024.5",
+    "myst-parser>=3.0",
+    "sphinx-autodoc-typehints>=2.0",
+    "sphinx-copybutton>=0.5",
+    "linkify-it-py>=2.0",
+]
+dev = [
+    "build>=1.2.0",
+    "mypy>=1.11.0",
+    "pytest>=8.2.0",
+    "ruff>=0.6.0",
+    "twine>=5.1.0",
+]
+
+[project.urls]
+Homepage = "https://nyora.pages.dev"
+"Official Site" = "https://nyora.pages.dev"
+Documentation = "https://nyora.pages.dev/docs/python/"
+Repository = "https://github.com/Hasan72341/nyora-python"
+Issues = "https://github.com/Hasan72341/nyora-python/issues"
+
+[project.scripts]
+nyora-tui = "nyora_tui.app:main"
+nyora-cli = "nyora.cli:main"
+nyora = "nyora.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nyora", "src/nyora_tui"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"parsers.bundle.js" = "nyora/assets/parsers.bundle.js"
+"sources.json" = "nyora/assets/sources.json"
+"src/nyora/py.typed" = "nyora/py.typed"
+"src/nyora_tui/py.typed" = "nyora_tui/py.typed"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+check_untyped_defs = true
+packages = ["nyora", "nyora_tui"]
+
+[[tool.mypy.overrides]]
+module = ["quickjs"]
+ignore_missing_imports = true

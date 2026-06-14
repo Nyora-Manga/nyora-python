@@ -1,0 +1,10 @@
+{
+  "name": "nyora-python-bridge",
+  "version": "1.0.0",
+  "description": "Node.js bridge for executing Nyora manga parsers",
+  "main": "bridge.js",
+  "type": "module",
+  "dependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

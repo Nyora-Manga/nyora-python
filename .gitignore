@@ -1,0 +1,24 @@
+.venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+
+# Node bundler deps (parsers.bundle.js itself is committed)
+node_modules/
+
+# Local download output / scratch experiments (not part of the package)
+nyora-download/
+/rewrite_tui.py
+/test_pipeline.py
+/test_image.py
+/test_textual_image.py
+/test_textual_kitty.py
+/test_textual_worker.py
+/test_tgp.py
+/test_tui_redesign.py
+/docs/_build/
