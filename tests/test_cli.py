@@ -2,8 +2,8 @@
 
 ``nyora.cli`` is written concurrently; if it is not importable yet the whole
 module is skipped so the suite stays green. When present, the data subcommands
-are driven against a fake :class:`nyora.direct.Nyora` so no network or embedded
-JS engine is involved.
+are driven against a fake cloud :class:`nyora.Nyora` client so no network is
+involved.
 """
 
 from __future__ import annotations
@@ -65,18 +65,6 @@ class FakeNyora:
         self.manga = FakeManga()
         self.closed = False
 
-    def update(self, *, force: bool = False) -> Any:
-        from pathlib import Path
-
-        from nyora.ota import OtaUpdateResult
-
-        return OtaUpdateResult(
-            updated=True, version=1, bundle_path=Path("/tmp/b.js"), sources_path=Path("/tmp/s.json")
-        )
-
-    def check_update(self) -> tuple[bool, int | None, int | None]:
-        return (False, 1, 1)
-
     def close(self) -> None:
         self.closed = True
 
@@ -89,10 +77,8 @@ class FakeNyora:
 
 @pytest.fixture(autouse=True)
 def patch_nyora(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Patch the symbol where cli imports/uses it. Cover both possible bindings.
-    monkeypatch.setattr("nyora.direct.Nyora", FakeNyora, raising=False)
-    if hasattr(cli, "Nyora"):
-        monkeypatch.setattr(cli, "Nyora", FakeNyora, raising=False)
+    # Patch the symbol where cli imports/uses it (cli does `from nyora.client import Nyora`).
+    monkeypatch.setattr(cli, "Nyora", FakeNyora, raising=False)
 
 
 def test_sources_returns_zero(capsys: pytest.CaptureFixture[str]) -> None:
@@ -142,11 +128,6 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     rc = cli.main(["version"])
     assert rc == 0
     assert capsys.readouterr().out.strip() != ""
-
-
-def test_update(capsys: pytest.CaptureFixture[str]) -> None:
-    rc = cli.main(["update"])
-    assert rc == 0
 
 
 def test_bare_invocation_launches_tui(monkeypatch: pytest.MonkeyPatch) -> None:

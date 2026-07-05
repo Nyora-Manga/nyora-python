@@ -1,9 +1,9 @@
 # The interactive terminal reader (TUI)
 
 Nyora ships an interactive **terminal reader** for browsing sources, searching,
-and listing chapter pages without writing any code. It is built on the same
-in-process {py:class}`nyora.direct.Nyora` client used everywhere else, so it
-needs no helper, no Node, and no JVM.
+reading chapters, and syncing a library without writing any code. It drives the
+same cloud {py:class}`nyora.Nyora` client used everywhere else, so it needs no
+local server and no Node process.
 
 ```{note}
 The TUI is part of the base install (`pip install nyora` pulls in `rich` and
@@ -50,10 +50,12 @@ subcommands (with `--json`) or the [library](library.md) directly.
 
 The reader picks the richest frontend your environment supports, in order:
 
-1. **Textual** — a full-screen app with panes, lists, and a footer. Used
+1. **Textual** — a full-screen app with a source sidebar, a results pane, and an
+   in-terminal webtoon reader that renders chapter pages as images. Used
    whenever `textual` is importable (it is, in the default install).
-2. **Rich** — an interactive prompt with formatted tables, used if `textual`
-   is unavailable.
+2. **Rich** — an interactive prompt with formatted tables, used if `textual` is
+   unavailable. This frontend also exposes the **cloud sync** account menu and
+   synced library.
 3. **Plain** — a minimal numbered-list `input()` loop, used if neither `rich`
    nor `textual` is available.
 
@@ -74,9 +76,28 @@ Sources  ->  Results (popular / search)  ->  Details + chapters  ->  Chapter pag
    the entries; pick one to open it.
 3. **Details** — see authors, state, tags, and description, plus the chapter
    list. Pick a chapter.
-4. **Pages** — the chapter's image URLs are listed (the reader resolves them; it
-   does not download images — use `nyora-cli download` to save a chapter as a
-   `.cbz` archive).
+4. **Pages** — in the Textual frontend the chapter's images are downloaded and
+   rendered inline as a continuous webtoon view (using the Kitty terminal
+   graphics protocol where available, falling back to pixel rendering). In the
+   Rich and Plain frontends the page image URLs are listed. To save a chapter to
+   disk, use `nyora-cli download` for a `.cbz` archive.
+
+## Cloud sync in the reader
+
+The Rich frontend has a built-in account menu and a synced library, backed by
+{py:class}`nyora.sync.NyoraSync` (see the [sync guide](sync.md)). At the "Filter
+sources" prompt you can type:
+
+| Input | Action |
+| ----- | ------ |
+| `sync` (or `account`) | Open the **account menu** — sign in with email + password, or sign out. When signed in, the prompt shows your email. |
+| `lib` (or `library`) | Open your **synced library** — the favourites you have pushed to the cloud, joined with their manga metadata. |
+
+Sign-in tokens persist to `~/.config/nyora/sync.json`, so the reader stays
+signed in across runs. When you open a manga's **details** while signed in, the
+reader offers a **"Favourite to library?"** prompt — press `f` to push that
+manga to your cloud library (it lands in the `nyora_manga` and `nyora_favourite`
+tables). An empty library shows a hint to favourite manga with `f` from details.
 
 ## Keybindings and controls
 
@@ -84,22 +105,25 @@ Sources  ->  Results (popular / search)  ->  Details + chapters  ->  Chapter pag
 
 | Key | Where | Action |
 | --- | ----- | ------ |
-| type text | source filter / search box | Live-filter sources, or set the search query. |
-| `Enter` | filter/search box | Submit; moves focus into the list (search refetches from page 1). |
+| type text | source filter box (`ctrl+f`) | Live-filter the source list. |
+| type text | search box (`ctrl+s`) | Set the search query for the current source. |
+| `Enter` | filter / search box | Submit; the source list gains focus, or the search refetches. |
 | `↑` / `↓`, `Enter` | any list | Move the selection and open the highlighted item. |
-| `n` | results screen | Next page (when more results are available). |
-| `p` | results screen | Previous page. |
-| `Esc` | results / details / pages | Go **back** one screen. |
-| `Esc` | sources screen | Quit the app. |
+| `ctrl+f` | anywhere | Focus the source filter box. |
+| `ctrl+s` | anywhere | Focus the search box. |
+| `j` / `k` / `Space` | pages screen | Scroll the webtoon down / up / page-down. |
+| `b` / `Esc` | results / details / pages | Go **back** one screen. |
+| `Esc` | sources screen | Focus the source list. |
 | `q` | anywhere | Quit the app. |
 
-The header shows `Nyora — embedded parser runtime`; the footer lists the active
-keybindings for the current screen. Fetches run on background workers, so the UI
+The header shows `Nyora`; the footer lists the active keybindings for the
+current screen. Fetches and image downloads run on background workers, so the UI
 stays responsive while loading.
 
 ### Rich frontend (fallback)
 
-Interaction is prompt-driven. At each prompt you type:
+Interaction is prompt-driven. At the source prompt, `sync`/`lib` open the
+account and library views described above. At each list prompt you type:
 
 | Input | Action |
 | ----- | ------ |
@@ -121,12 +145,12 @@ waits for `Enter`.
 
 ## Exiting
 
-- Textual: `q` or `Esc` from the sources screen.
+- Textual: `q` from anywhere.
 - Rich/Plain: `q` at any prompt.
 - `Ctrl+C` (or end-of-input) anywhere exits cleanly.
 
-In all cases the process returns exit code `0`, and the embedded
-{py:class}`nyora.direct.Nyora` client is closed on the way out.
+In all cases the process returns exit code `0`, and the cloud
+{py:class}`nyora.Nyora` client is closed on the way out.
 
 ## When to use the CLI instead
 

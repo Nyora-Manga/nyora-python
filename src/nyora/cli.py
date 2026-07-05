@@ -1,9 +1,9 @@
-"""Command-line interface for the independent Nyora SDK.
+"""Command-line interface for the Nyora SDK.
 
-Exposes the embedded JavaScript parser runtime (no helper required) through a
-small argparse-based command tree: list sources, run popular/latest/search,
-fetch manga details and chapter pages, download chapters as .cbz, apply OTA parser
-updates, and serve the REST helper-compatible HTTP API.
+Exposes the Nyora cloud helper through a small argparse-based command tree: list
+sources, run popular/latest/search, fetch manga details and chapter pages,
+download chapters as .cbz, and show the version. Running ``nyora-cli`` with no
+subcommand launches the interactive terminal reader (TUI).
 """
 
 from __future__ import annotations
@@ -19,10 +19,16 @@ from urllib.parse import urlparse
 
 import httpx
 
-from nyora.direct import Nyora
+from nyora.client import Nyora
 from nyora.errors import NyoraError
 from nyora.models import Manga, MangaDetails, MangaPage, SearchPage, Source
-from nyora.runtime import BROWSER_UA
+
+#: User-Agent for direct image downloads (the cloud helper rewrites cover/page
+#: hosts; a browser UA keeps CDNs happy).
+BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
 
 try:  # pragma: no cover - rich is an optional/tui extra
     from rich.console import Console
@@ -150,16 +156,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_batch.add_argument("manga_url", help="manga URL")
     p_batch.set_defaults(handler=_cmd_batch)
 
-    p_update = sub.add_parser("update", help="apply over-the-air parser updates")
-    p_update.add_argument("--force", action="store_true", help="force re-download")
-    p_update.set_defaults(handler=_cmd_update)
-
-    p_serve = sub.add_parser("serve", help="run the REST helper-compatible server")
-    p_serve.add_argument("--host", default="127.0.0.1", help="bind host (default: 127.0.0.1)")
-    p_serve.add_argument("--port", type=int, default=0, help="bind port (default: ephemeral)")
-    p_serve.set_defaults(handler=_cmd_serve)
-
-    p_version = sub.add_parser("version", help="show package and OTA versions")
+    p_version = sub.add_parser("version", help="show package version")
     p_version.set_defaults(handler=_cmd_version)
 
     return parser
@@ -301,60 +298,12 @@ def _cmd_batch(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_update(args: argparse.Namespace) -> int:
-    with Nyora() as nyora:
-        result = nyora.update(force=args.force)
-    payload = {
-        "updated": result.updated,
-        "version": result.version,
-        "bundlePath": str(result.bundle_path),
-        "sourcesPath": str(result.sources_path),
-    }
-    if args.json:
-        _print_json(payload)
-        return 0
-    if result.updated:
-        _print(f"Updated to OTA version {result.version}")
-    else:
-        _print(f"Already up to date (OTA version {result.version})")
-    _print(f"  bundle:  {result.bundle_path}")
-    _print(f"  sources: {result.sources_path}")
-    return 0
-
-
-def _cmd_serve(args: argparse.Namespace) -> int:
-    from nyora.server import NyoraServer
-
-    server = NyoraServer(host=args.host, port=args.port)
-    base_url = server.start()
-    if args.json:
-        _print_json({"baseUrl": base_url})
-    else:
-        _print(f"Nyora server listening at {base_url}")
-        _print("Press Ctrl+C to stop.")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:  # pragma: no cover - interactive
-        _print("\nStopping...")
-    finally:
-        server.stop()
-    return 0
-
-
 def _cmd_version(args: argparse.Namespace) -> int:
     package_version = _package_version()
-    ota_version: int | None
-    try:
-        from nyora.ota import OtaManager
-
-        ota_version = OtaManager().installed_version()
-    except Exception:  # pragma: no cover - defensive
-        ota_version = None
     if args.json:
-        _print_json({"package": package_version, "ota": ota_version})
+        _print_json({"package": package_version})
         return 0
     _print(f"nyora {package_version}")
-    _print(f"OTA parsers: {ota_version if ota_version is not None else 'bundled'}")
     return 0
 
 

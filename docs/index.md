@@ -3,15 +3,16 @@
 **Read like the world can wait.**
 
 `nyora` is the official Python package for **Nyora** — a fast, free, ad-free,
-open-source manga engine. It brings Nyora's full source-and-parser engine to
-Python: browse and search 1000+ manga, manhwa, and manhua sources, fetch manga
-details and chapter lists, and resolve page image URLs — all from your code or
-your terminal.
+open-source manga engine. It is a thin, typed client over the **Nyora cloud**
+(the kotatsu-parsers engine, ~960 sources) at
+[`https://api.hasanraza.tech`](https://api.hasanraza.tech): browse and search
+manga, manhwa, and manhua sources, fetch manga details and chapter lists, and
+resolve page image URLs — all from your code or your terminal.
 
-It is **pure Python**. There is no JVM helper, no desktop app, no Node.js, and
-no Java to install. The parser bundle runs in-process via QuickJS, HTTP goes
-through `httpx`, and HTML parsing uses `selectolax`. New and fixed sources
-arrive over the air, so you do not need to upgrade the package to get them.
+The default `Nyora()` client talks to the cloud, so there is **nothing else to
+run**: no local server and no Node process to manage. HTTP is handled by `httpx`.
+Sources are maintained centrally in the cloud, so you get new and fixed sources
+without upgrading the package.
 
 ```bash
 pip3 install nyora
@@ -51,12 +52,31 @@ nyora-cli                 # launches the TUI
 
 → {doc}`guide/cli` · {doc}`guide/tui`
 
+## Cloud Sync
+
+Signed-in users can sync their library — favourites, history, and bookmarks —
+across devices through {py:class}`nyora.sync.NyoraSync`, which talks to the
+Nyora sync server at
+[`https://stream.hasanraza.tech`](https://stream.hasanraza.tech). The terminal
+reader has a built-in account menu and synced library view.
+
+→ {doc}`guide/sync`
+
 ---
 
 The **library** (`pip install nyora`, `import nyora`) and the **`nyora-cli`
 tool** are documented separately throughout these docs. When something is about
 writing Python, it lives under the library guide; when it is about the
 command-line tool or terminal reader, it lives under the CLI and TUI guides.
+
+```{admonition} Other Nyora clients
+:class: seealso
+
+Beyond this Python SDK, Nyora also ships **nyora-mihon** (an on-device Android
+APK that brings ~900 sources to stock Mihon) and **nyora-aidoku** (~959 WASM
+`.aix` proxy sources for stock Aidoku). Those are separate distributions; this
+site documents the Python package.
+```
 
 ## Documentation
 
@@ -67,8 +87,7 @@ quickstart
 guide/library
 guide/cli
 guide/tui
-guide/server
-guide/ota
+guide/sync
 guide/agents
 reference/api
 ```

@@ -21,8 +21,8 @@ if _SRC not in sys.path:
 project = "Nyora Python"
 author = "Md Hasan Raza"
 copyright = "2026, Md Hasan Raza"  # noqa: A001
-release = "0.3.0"
-version = "0.3.0"
+release = "2.0.0"
+version = "2.0.0"
 
 # -- General configuration ----------------------------------------------------
 

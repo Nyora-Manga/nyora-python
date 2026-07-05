@@ -35,6 +35,11 @@ Three equivalent entry points are installed (`nyora`, `nyora-cli`,
 `nyora-tui`). `nyora` and `nyora-cli` are the same program (`nyora.cli:main`);
 `nyora-tui` launches the TUI directly. This page uses `nyora-cli` throughout.
 
+Every subcommand talks to the **Nyora cloud**
+([`https://api.hasanraza.tech`](https://api.hasanraza.tech)) by default, so
+there is nothing else to run. Point at a different deployment by setting the
+`NYORA_BASE_URL` environment variable.
+
 ## Synopsis
 
 ```text
@@ -50,6 +55,9 @@ nyora-cli --json sources          # correct
 nyora-cli sources --json          # WRONG: unknown option to `sources`
 ```
 
+The commands are: `sources`, `search`, `popular`, `latest`, `details`, `pages`,
+`download`, `batch`, and `version`.
+
 ## Global options
 
 | Option | Effect |
@@ -60,12 +68,12 @@ nyora-cli sources --json          # WRONG: unknown option to `sources`
 ### `-s` / `--source` fuzzy resolution
 
 Every command that targets a source (`search`, `popular`, `latest`, `details`,
-`pages`, `download`) takes a required `-s SRC` / `--source SRC`. `SRC` is matched
-**case-insensitively** as a substring against each source's `id` **and** `name`,
-and the **first** match wins (sources are taken in catalog order). So
-`-s mangadex`, `-s MangaDex`, and `-s dex` typically all resolve to the same
-source. If nothing matches, the command exits non-zero with
-`error: No bundled source matched '<SRC>'`.
+`pages`, `download`, `batch`) takes a required `-s SRC` / `--source SRC`. `SRC`
+is matched **case-insensitively** as a substring against each source's `id`
+**and** `name`, and the **first** match wins (sources are taken in catalog
+order). So `-s mangadex`, `-s MangaDex`, and `-s dex` typically all resolve to
+the same source. If nothing matches, the command exits non-zero with
+`error: No installed source matched '<SRC>'`.
 
 To see the exact ids and names available, run `nyora-cli sources`.
 
@@ -73,7 +81,7 @@ To see the exact ids and names available, run `nyora-cli sources`.
 
 ## `sources` — list or search available sources
 
-List the sources bundled with the parser runtime, optionally filtered.
+List the sources available from the Nyora cloud, optionally filtered.
 
 ```text
 nyora-cli [--json] sources [--search Q]
@@ -373,83 +381,7 @@ straight into any comic reader or library server.
 
 ---
 
-## `update` — apply over-the-air parser updates
-
-Fetch the latest OTA parser bundle and source catalog (SHA-256 verified) into
-the per-user cache. See [OTA updates](ota.md) for the mechanism.
-
-```text
-nyora-cli [--json] update [--force]
-```
-
-| Arg / flag | Required | Default | Description |
-| ---------- | -------- | ------- | ----------- |
-| `--force` | no | off | Re-download and reinstall even when already up to date. |
-
-**Example**
-
-```bash
-nyora-cli update
-```
-
-```text
-Updated to OTA version 42
-  bundle:  /Users/you/Library/Caches/nyora/ota/parsers.bundle.js
-  sources: /Users/you/Library/Caches/nyora/ota/sources.json
-```
-
-When already current it prints
-`Already up to date (OTA version 42)`.
-
-**JSON** emits:
-
-```json
-{
-  "updated": true,
-  "version": 42,
-  "bundlePath": "/Users/you/Library/Caches/nyora/ota/parsers.bundle.js",
-  "sourcesPath": "/Users/you/Library/Caches/nyora/ota/sources.json"
-}
-```
-
----
-
-## `serve` — run the REST helper-compatible server
-
-Start {py:class}`~nyora.server.NyoraServer`, a stdlib HTTP server exposing the
-helper-compatible REST API backed by the embedded runtime. It writes the bound
-port to the standard helper port file, so other Nyora apps can attach. Runs in
-the foreground until `Ctrl+C`.
-
-```text
-nyora-cli [--json] serve [--host HOST] [--port PORT]
-```
-
-| Arg / flag | Required | Default | Description |
-| ---------- | -------- | ------- | ----------- |
-| `--host HOST` | no | `127.0.0.1` | Interface to bind. |
-| `--port PORT` | no | `0` | Port to bind, or `0` for an ephemeral free port. |
-
-**Example**
-
-```bash
-nyora-cli serve --port 8765
-```
-
-```text
-Nyora server listening at http://127.0.0.1:8765
-Press Ctrl+C to stop.
-```
-
-**JSON** emits `{"baseUrl": "http://127.0.0.1:8765"}` and then keeps serving.
-
-The REST endpoints (`/health`, `/sources`, `/sources/popular|latest|search`,
-`/manga/details`, `/manga/pages`) are documented in the
-[server guide](server.md) and the [AI-agent guide](agents.md).
-
----
-
-## `version` — show package and OTA versions
+## `version` — show package version
 
 ```text
 nyora-cli [--json] version
@@ -464,14 +396,10 @@ nyora-cli version
 ```
 
 ```text
-nyora 0.3.0
-OTA parsers: 42
+nyora 2.0.0
 ```
 
-`OTA parsers` shows the installed cache version, or `bundled` when nothing has
-been fetched yet (the package's shipped fallback is in use).
-
-**JSON** emits `{"package": "0.3.0", "ota": 42}` (`ota` is `null` when bundled).
+**JSON** emits `{"package": "2.0.0"}`.
 
 ---
 
@@ -480,7 +408,7 @@ been fetched yet (the package's shipped fallback is in use).
 | Code | Meaning |
 | ---- | ------- |
 | `0` | Success. For `download`, at least one page was saved. The bare-`nyora-cli` TUI also returns `0` on a clean exit and when no interactive terminal is attached. |
-| `1` | A {py:class}`~nyora.errors.NyoraError` or `LookupError` was raised — e.g. an unresolved `-s/--source`, a parser/network failure, or (for `download`) no pages could be saved. The message is printed to stderr as `error: <message>`. |
+| `1` | A {py:class}`~nyora.errors.NyoraError` or `LookupError` was raised — e.g. an unresolved `-s/--source`, a network/cloud failure, or (for `download`) no pages could be saved. The message is printed to stderr as `error: <message>`. |
 | `2` | argparse usage error (unknown command/option, missing required argument). |
 | `130` | Interrupted with `Ctrl+C` (`KeyboardInterrupt`). |
 
@@ -527,17 +455,10 @@ nyora-cli batch -s mangadex -o ./berserk "$url"
 nyora-cli --json pages -s mangadex "$ch" | jq -r '.[].url'
 ```
 
-**Keep parsers current before a batch job:**
+**Count the available sources:**
 
 ```bash
-nyora-cli update --force && nyora-cli --json sources | jq 'length'
-```
-
-**Serve the REST API for another tool to attach to:**
-
-```bash
-nyora-cli serve --port 8765 &
-curl -s http://127.0.0.1:8765/sources | jq '.sources | length'
+nyora-cli --json sources | jq 'length'
 ```
 
 **Open the interactive reader** (must be a real terminal):

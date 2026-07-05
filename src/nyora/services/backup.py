@@ -1,11 +1,12 @@
 """Backup, sync, local file, tracker, and system operations.
 
 Defines several helper-backed services: :class:`BackupService` (export/import),
-:class:`SyncService` (Supabase cloud sync), :class:`LocalService` (local file
-scanning), :class:`TrackerService` (AniList tracking), and
-:class:`SystemService` (stats, settings, OTA) which composes the sync, local,
-and tracker services. ``SystemService`` is attached to a client as
-``client.system``; the rest are reachable as ``client.system.sync`` etc.
+:class:`LocalService` (local file scanning), :class:`TrackerService` (AniList
+tracking), and :class:`SystemService` (stats, settings, OTA) which composes the
+local and tracker services. ``SystemService`` is attached to a client as
+``client.system``; the rest are reachable as ``client.system.local`` etc.
+
+Cloud sync is a separate client: :class:`nyora.sync.NyoraSync`.
 """
 
 from __future__ import annotations
@@ -51,72 +52,6 @@ class BackupService:
         """
         data = self._client.post("/backup/import", content=backup_json)
         return BackupImportResult.from_json(data)
-
-
-class SyncService:
-    """Supabase-backed cloud sync operations.
-
-    Reachable as ``client.system.sync``.
-    """
-
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
-
-    def status(self) -> dict[str, Any]:
-        """Return the current cloud-sync status.
-
-        Returns:
-            The raw status payload.
-        """
-        return self._client.get("/supabase/status")
-
-    def sign_in(self, id_token: str) -> dict[str, Any]:
-        """Sign in to the cloud-sync backend.
-
-        Args:
-            id_token: OAuth/identity token to authenticate with.
-
-        Returns:
-            The raw helper response.
-        """
-        return self._client.post("/supabase/signin", params={"idToken": id_token})
-
-    def sign_out(self) -> dict[str, Any]:
-        """Sign out of the cloud-sync backend.
-
-        Returns:
-            The raw helper response.
-        """
-        return self._client.post("/supabase/signout")
-
-    def sync(self) -> dict[str, Any]:
-        """Run a cloud sync.
-
-        Returns:
-            The raw helper response.
-        """
-        return self._client.post("/supabase/sync")
-
-    def restore_from_cloud(self) -> dict[str, Any]:
-        """Restore local data from the cloud copy.
-
-        Returns:
-            The raw helper response.
-        """
-        return self._client.post("/supabase/restore-from-cloud")
-
-    def has_local_data(self) -> bool:
-        """Check whether local data exists that could be synced.
-
-        Returns:
-            ``True`` if local data is present.
-        """
-        return bool(self._client.get("/supabase/has-local-data").get("hasLocalData", False))
 
 
 class LocalService:
@@ -201,12 +136,13 @@ class TrackerService:
 class SystemService:
     """System-level operations: stats, settings, OTA, and sub-services.
 
-    Attached to a client as ``client.system``. Composes :class:`SyncService`
-    (``.sync``), :class:`LocalService` (``.local``), and :class:`TrackerService`
-    (``.tracker``).
+    Attached to a client as ``client.system``. Composes
+    :class:`LocalService` (``.local``) and :class:`TrackerService` (``.tracker``).
+
+    Cloud sync now lives in the standalone :class:`nyora.sync.NyoraSync` client
+    (OAuth2/JWT against the Nyora sync server), not on ``client.system``.
 
     Attributes:
-        sync: Cloud-sync operations.
         local: Local-file operations.
         tracker: Progress-tracking operations.
     """
@@ -218,7 +154,6 @@ class SystemService:
             client: The owning :class:`nyora.client.Nyora` instance.
         """
         self._client = client
-        self.sync = SyncService(client)
         self.local = LocalService(client)
         self.tracker = TrackerService(client)
 

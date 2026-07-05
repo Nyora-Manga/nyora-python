@@ -48,9 +48,8 @@ def test_main_non_tty_returns_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     out = _NotATty()
     monkeypatch.setattr(sys, "stdout", out)
     monkeypatch.setattr(sys, "stdin", _NotATty())
-    # Guard both the re-exported name and the canonical class.
+    # Guard the name the TUI actually constructs.
     monkeypatch.setattr(tui, "Nyora", _BoomNyora, raising=False)
-    monkeypatch.setattr("nyora.direct.Nyora", _BoomNyora, raising=False)
 
     rc = tui.main()
     assert isinstance(rc, int)

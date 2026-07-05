@@ -8,8 +8,9 @@ chapter pages):
 * a ``rich``-based interactive prompt fallback;
 * a plain-text ``input()`` fallback when neither is available.
 
-All three drive :class:`nyora.direct.Nyora`, the independent JS runtime, and
-degrade gracefully on network/parse errors instead of crashing.
+All three drive the cloud :class:`nyora.Nyora` client and the cloud sync
+(:class:`nyora_tui.sync.TuiSync`), and degrade gracefully on network/parse
+errors instead of crashing.
 """
 
 from __future__ import annotations
@@ -92,7 +93,7 @@ def main() -> int:
 
     Selects the richest usable frontend (textual -> rich -> plain ``input()``)
     and drives the shared source -> results -> details -> pages navigation flow,
-    all backed by :class:`nyora.direct.Nyora`.
+    all backed by the cloud :class:`nyora.Nyora` client.
 
     Safe to launch from a non-interactive context: when no interactive terminal
     is attached (``sys.stdout`` is not a TTY) the reader does **not** start and
@@ -397,9 +398,9 @@ def _run_textual() -> bool:
             import io
             import httpx
             from PIL import Image
-            from nyora.runtime import BROWSER_UA
-            
-            http = self.client._runtime._http
+            from nyora_tui.sync import BROWSER_UA
+
+            http = httpx.Client(timeout=30.0, follow_redirects=True)
             for i, p in enumerate(self._pages):
                 try:
                     headers = {"Referer": self.chapter.url, "User-Agent": BROWSER_UA}
@@ -517,9 +518,11 @@ def _run_rich() -> bool:
             self.columns = columns
             self.row = row
 
-    console.print(
-        Panel.fit("[bold]Nyora[/bold] terminal reader\nembedded JS parser runtime")
-    )
+    from nyora_tui.sync import TuiSync
+
+    sync = TuiSync()
+
+    console.print(Panel.fit("[bold]Nyora[/bold] terminal reader\nNyora cloud sources"))
 
     with Nyora() as client:
         sources, err = _safe(_list_sources, client)
@@ -528,9 +531,19 @@ def _run_rich() -> bool:
             return True
 
         while True:  # source loop
-            q = Prompt.ask("Filter sources ([dim]blank = all, 'q' quit[/dim])").strip()
+            who = f" [green]({sync.email})[/green]" if sync.is_signed_in else ""
+            q = Prompt.ask(
+                f"Filter sources{who} "
+                "([dim]blank = all, 'sync' account, 'lib' library, 'q' quit[/dim])"
+            ).strip()
             if q.lower() == "q":
                 break
+            if q.lower() in ("sync", "account"):
+                _rich_account(console, sync, Prompt)
+                continue
+            if q.lower() in ("lib", "library"):
+                _rich_library(console, client, sync, choose, _R, Panel)
+                continue
             filtered = _filter_sources(sources, q)
             if not filtered:
                 console.print("[yellow]No sources matched.[/yellow]")
@@ -543,11 +556,55 @@ def _run_rich() -> bool:
             if idx is None:
                 continue
             source = filtered[idx]
-            _rich_browse(console, client, source, choose, _R, Panel)
+            _rich_browse(console, client, source, choose, _R, Panel, sync)
     return True
 
 
-def _rich_browse(console, client, source, choose, _R, Panel) -> None:
+def _rich_account(console, sync, Prompt) -> None:
+    """Sign in/out of Nyora cloud sync."""
+    if sync.is_signed_in:
+        console.print(f"Signed in as [green]{sync.email}[/green].")
+        if Prompt.ask("Sign out? ([dim]y/N[/dim])").strip().lower() == "y":
+            sync.sign_out()
+            console.print("[yellow]Signed out.[/yellow]")
+        return
+    email = Prompt.ask("Email ([dim]blank to cancel[/dim])").strip()
+    if not email:
+        return
+    password = Prompt.ask("Password", password=True).strip()
+    try:
+        sync.sign_in(email, password)
+        console.print(f"[green]Signed in as {sync.email}.[/green]")
+    except Exception as e:  # noqa: BLE001 - surface any auth failure to the user
+        console.print(f"[red]Sign-in failed: {e}[/red]")
+
+
+def _rich_library(console, client, sync, choose, _R, Panel) -> None:
+    """Browse the synced favourites library."""
+    if not sync.is_signed_in:
+        console.print("[yellow]Sign in first ('sync').[/yellow]")
+        return
+    items, err = _safe(sync.library)
+    if err:
+        console.print(f"[red]Failed to load library: {err}[/red]")
+        return
+    if not items:
+        console.print("[yellow]Library is empty. Favourite manga with 'f' in details.[/yellow]")
+        return
+    render = _R(["Title", "Source"], lambda it: (it["title"], it["source"] or "-"))
+    while True:
+        idx, _ = choose(items, render, "Pick a library manga")
+        if idx is None:
+            return
+        it = items[idx]
+        details, derr = _safe(_fetch_details, client, it["source"], it["url"], it["title"])
+        if derr or details is None:
+            console.print(f"[red]Failed to load details: {derr}[/red]")
+            continue
+        console.print(Panel.fit(f"[bold]{it['title']}[/bold]\n{len(details.chapters)} chapters"))
+
+
+def _rich_browse(console, client, source, choose, _R, Panel, sync=None) -> None:
     from rich.prompt import Prompt
     from rich.markup import escape
 
@@ -590,7 +647,7 @@ def _rich_browse(console, client, source, choose, _R, Panel) -> None:
             query, page = ans_q, 1
             continue
         manga = result.entries[ans_idx]
-        _rich_details(console, client, source, manga, choose, _R, Panel)
+        _rich_details(console, client, source, manga, choose, _R, Panel, sync)
 
 
 def _choose_with_paging(console, items, render, prompt, choose):
@@ -628,8 +685,9 @@ def _choose_with_paging(console, items, render, prompt, choose):
         return None, ans
 
 
-def _rich_details(console, client, source, manga, choose, _R, Panel) -> None:
+def _rich_details(console, client, source, manga, choose, _R, Panel, sync=None) -> None:
     from rich.markup import escape
+    from rich.prompt import Prompt
     details, err = _safe(_fetch_details, client, source.id, manga.url, manga.title)
     if err:
         console.print(f"[red]Failed to load details: {escape(err)}[/red]")
@@ -647,6 +705,13 @@ def _rich_details(console, client, source, manga, choose, _R, Panel) -> None:
     body.append("")
     body.append(escape(m.description or "(no description)"))
     console.print(Panel("\n".join(body), title="Details"))
+
+    if sync is not None and sync.is_signed_in:
+        if Prompt.ask("Favourite to library? ([dim]f = yes, enter = skip[/dim])").strip().lower() == "f":
+            _, ferr = _safe(sync.favourite, source.id, m)
+            console.print(
+                f"[red]Sync failed: {escape(str(ferr))}[/red]" if ferr else "[green]Added to library.[/green]"
+            )
 
     if not details.chapters:
         console.print("[yellow]No chapters found.[/yellow]")

@@ -6,34 +6,34 @@ narrative usage, see the [library guide](../guide/library.md).
 
 ## Package overview
 
-The top-level `nyora` package re-exports the primary client, the helper REST
-clients, the OTA manager, the embedded server, the model dataclasses, and the
-exception hierarchy. Each re-exported symbol is documented in full under its
-canonical module section below.
+The top-level `nyora` package re-exports the cloud client, the async client, the
+cloud-sync client, the model dataclasses, and the exception hierarchy. Each
+re-exported symbol is documented in full under its canonical module section
+below.
 
 ```{eval-rst}
 .. automodule:: nyora
    :no-members:
 ```
 
-## `nyora.direct`
+## `nyora.client`
 
-The default, self-contained client and its in-process services.
+The cloud clients (`Nyora`, `AsyncNyora`) and the `CLOUD_BASE_URL` default.
 
 ```{eval-rst}
-.. automodule:: nyora.direct
+.. automodule:: nyora.client
    :members:
    :undoc-members:
    :show-inheritance:
    :member-order: bysource
 ```
 
-## `nyora.client`
+## `nyora.sync`
 
-The helper-backed REST clients (`Nyora`, `AsyncNyora`).
+Cloud account and library sync (`NyoraSync`) against the Nyora sync server.
 
 ```{eval-rst}
-.. automodule:: nyora.client
+.. automodule:: nyora.sync
    :members:
    :undoc-members:
    :show-inheritance:
@@ -46,42 +46,6 @@ Typed dataclasses returned throughout the SDK.
 
 ```{eval-rst}
 .. automodule:: nyora.models
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
-```
-
-## `nyora.ota`
-
-Over-the-air parser-bundle and source-catalog management.
-
-```{eval-rst}
-.. automodule:: nyora.ota
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
-```
-
-## `nyora.server`
-
-The stdlib HTTP server exposing the helper-compatible REST contract.
-
-```{eval-rst}
-.. autoclass:: nyora.server.NyoraServer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
-```
-
-## `nyora.runtime`
-
-The embedded QuickJS parser runtime that backs the direct client and the server.
-
-```{eval-rst}
-.. automodule:: nyora.runtime
    :members:
    :undoc-members:
    :show-inheritance:
@@ -102,7 +66,7 @@ The SDK exception hierarchy.
 
 ## `nyora.config`
 
-Helper-discovery configuration: environment variables and the port file.
+Endpoint-discovery configuration: environment variables and the port file.
 
 ```{eval-rst}
 .. automodule:: nyora.config
@@ -114,7 +78,7 @@ Helper-discovery configuration: environment variables and the port file.
 
 ## Services
 
-The service objects attached to the helper client (`nyora.client.Nyora`).
+The service objects attached to the client (`nyora.client.Nyora`).
 
 ### `nyora.services.sources`
 
@@ -158,8 +122,7 @@ The service objects attached to the helper client (`nyora.client.Nyora`).
 
 ### `nyora.services.backup`
 
-Includes `BackupService`, `SyncService`, `LocalService`, `TrackerService`, and
-`SystemService`.
+Includes `BackupService`, `LocalService`, `TrackerService`, and `SystemService`.
 
 ```{eval-rst}
 .. automodule:: nyora.services.backup

@@ -1,10 +1,8 @@
 """Nyora helper HTTP clients.
 
-This module provides the helper-backed REST clients used when an external Nyora
-helper process (the JVM helper, or an embedded :class:`nyora.server.NyoraServer`)
-is available. Unlike :class:`nyora.direct.Nyora`, these clients do not embed a
-parser runtime; they speak the camelCase helper REST contract over HTTP via
-``httpx``.
+This module provides the cloud-backed REST clients. They run no parsers
+themselves; they speak the camelCase helper REST contract over HTTP via
+``httpx`` against the Nyora cloud helper.
 
 It exposes:
 
@@ -12,10 +10,10 @@ It exposes:
   (sources, manga, library, downloads, backup, system).
 * :class:`AsyncNyora` — lightweight async client for read-style requests.
 
-The helper base URL is discovered from an explicit argument, the
-``NYORA_BASE_URL`` environment variable, or the helper port file written by a
-running Nyora app. A helper jar can also be launched and managed via
-:meth:`Nyora.managed`.
+The base URL defaults to the public Nyora cloud (``https://api.hasanraza.tech``);
+it can be overridden with an explicit argument, the ``NYORA_BASE_URL``
+environment variable, or a local helper's port file. A self-hosted helper jar
+can also be launched and managed via :meth:`Nyora.managed`.
 """
 
 from __future__ import annotations
@@ -40,23 +38,29 @@ from nyora.services.system import SystemService
 Json = dict[str, Any] | list[Any]
 
 
+#: Public Nyora cloud helper. Used by default so a bare ``Nyora()`` works with
+#: no local helper — the SDK is a thin cloud client.
+CLOUD_BASE_URL = "https://api.hasanraza.tech"
+
+
 def _resolve_base_url(base_url: str | None) -> str:
-    """Resolve the helper base URL from an argument, env var, or port file.
+    """Resolve the helper base URL.
+
+    Order: explicit argument → ``NYORA_BASE_URL`` env → a local helper's port
+    file → the public Nyora cloud (:data:`CLOUD_BASE_URL`).
 
     Args:
         base_url: Explicit base URL, or ``None`` to auto-discover.
 
     Returns:
         The resolved base URL with any trailing slash removed.
-
-    Raises:
-        HelperNotFoundError: If no helper can be discovered.
     """
-    resolved = base_url or os.getenv(BASE_URL_ENV) or read_base_url_from_port_file()
-    if not resolved:
-        raise HelperNotFoundError(
-            "No Nyora helper found. Start Nyora, set NYORA_BASE_URL, or use Nyora.managed()."
-        )
+    resolved = (
+        base_url
+        or os.getenv(BASE_URL_ENV)
+        or read_base_url_from_port_file()
+        or CLOUD_BASE_URL
+    )
     return resolved.rstrip("/")
 
 

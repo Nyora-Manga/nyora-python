@@ -1,54 +1,68 @@
 # Library / SDK guide
 
 This is the complete guide to the **Nyora library** (`pip install nyora`,
-`import nyora`). It covers the two client paths, every service method with its
-signature and return type, context-manager usage, error handling, and the model
-dataclasses.
+`import nyora`). It covers the cloud client, its async counterpart, every service
+method with its signature and return type, context-manager usage, error
+handling, and the model dataclasses. Cloud account and library sync live in a
+separate client, {py:class}`nyora.sync.NyoraSync`, documented in the
+[sync guide](sync.md).
 
 ```{note}
 The library and the `nyora-cli` terminal tool are **separate**. This guide is
 about the importable `nyora` package only.
 ```
 
-## Two client paths
-
-Nyora ships two distinct clients. Pick based on whether you want an in-process
-runtime or want to talk to an external Nyora helper.
+## Clients at a glance
 
 | Client | Import | Backend | Use when |
 | --- | --- | --- | --- |
-| `nyora.Nyora` (a.k.a. `nyora.direct.Nyora`) | `from nyora import Nyora` | Embedded QuickJS parser runtime, in-process | **Default.** You want a self-contained SDK with no external process. |
-| `nyora.NyoraHelper` (a.k.a. `nyora.client.Nyora`) | `from nyora import NyoraHelper` | REST over HTTP to a running Nyora helper | You already have a Nyora app/helper running and want its full library, downloads, history, and sync features. |
-| `nyora.AsyncNyora` | `from nyora import AsyncNyora` | Async REST to a running helper | You need `async`/`await` read access to a helper. |
+| `nyora.Nyora` | `from nyora import Nyora` | REST over HTTP to the Nyora cloud (default) | **Default.** Browse, search, read, and — against a full helper deployment — manage library, downloads, history, and backup. |
+| `nyora.AsyncNyora` | `from nyora import AsyncNyora` | Async REST to the same endpoint | You need `async`/`await` read access. |
+| `nyora.NyoraSync` | `from nyora import NyoraSync` | OAuth2/JWT to the Nyora **sync** server | You want to sync a user's favourites, history, and bookmarks. See the [sync guide](sync.md). |
 
-The direct client and the helper client expose **different** capabilities. The
-direct client is read-and-browse over the bundled parsers; the helper client
-adds the user's library, downloads, history, backup, and cloud sync (because
-those live in the helper, not in the parsers).
+`nyora.NyoraHelper` is a backwards-compatible alias of `nyora.Nyora`; new code
+should use `Nyora`.
 
 ---
 
-## The default client: `nyora.direct.Nyora`
+## The client: `nyora.Nyora`
 
 ```python
 from nyora import Nyora
 
-client = Nyora(timeout=60.0)
+with Nyora() as client:
+    for source in client.sources.list():
+        print(source.id, source.name)
 ```
 
-`Nyora(*, timeout=60.0)` constructs the client and its embedded
-`nyora.runtime.ParserRuntime`. `timeout` is the per-call runtime timeout in
-seconds.
+`Nyora` is a thin, typed HTTP client. By default it targets the public Nyora
+cloud ([`nyora.CLOUD_BASE_URL`](../reference/api.md), i.e.
+`https://api.hasanraza.tech`), so a bare `Nyora()` just works with nothing else
+running.
+
+### Construction and discovery
+
+- `Nyora(base_url=None, *, timeout=60.0, helper=None)` — connect. When
+  `base_url` is `None`, the URL is resolved in order: the `NYORA_BASE_URL`
+  environment variable, a running local helper's port file, then the public
+  cloud. `timeout` is the per-request HTTP timeout in seconds.
+- `Nyora.attach(base_url=None, *, timeout=60.0)` — classmethod alias for
+  attaching to an already-running endpoint (explicit or auto-discovered).
+- `Nyora.managed(jar_path=None, *, java="java", timeout=60.0, launch_timeout=20.0)`
+  — classmethod that launches a local helper process from a `.jar` (path or the
+  `NYORA_HELPER_JAR` environment variable) with `java` and binds a client to the
+  managed process. The process is owned and stopped on `close()`. Most users
+  never need this — it is for running a private helper instead of the cloud.
 
 ### Context-manager usage
 
-The embedded runtime holds resources (the QuickJS context). Always close it.
-The context manager is the idiomatic way:
+The client holds an `httpx` connection. Use it as a context manager so the
+connection (and any managed helper) is released on exit:
 
 ```python
 with Nyora() as client:
     sources = client.sources.list()
-# runtime is closed here
+# connection closed here
 ```
 
 Equivalently, call `client.close()` yourself:
@@ -61,176 +75,9 @@ finally:
     client.close()
 ```
 
-### Attributes
-
-- `client.ota` — the `nyora.ota.OtaManager` backing over-the-air updates.
-- `client.sources` — a `DirectSourcesService`.
-- `client.manga` — a `DirectMangaService`.
-
-### Top-level methods
-
-#### `update(*, force=False) -> OtaUpdateResult`
-
-Fetch the latest OTA parser bundle, then reload the embedded runtime so new
-parsers are live in the same process. Pass `force=True` to re-download even when
-already current. Returns an `nyora.ota.OtaUpdateResult`.
-
-```python
-with Nyora() as client:
-    result = client.update()
-    print(result.updated, result.version, result.bundle_path)
-```
-
-#### `check_update() -> tuple[bool, int | None, int | None]`
-
-Check whether a newer bundle is available **without** applying it. Returns
-`(available, installed_version, latest_version)`; versions are `None` when
-unknown.
-
-```python
-with Nyora() as client:
-    available, installed, latest = client.check_update()
-```
-
-#### `Nyora.helper(base_url=None, *, timeout=60.0) -> nyora.client.Nyora`
-
-Classmethod. Attach to an already-running external helper and return a
-`nyora.client.Nyora` REST client (see the "The helper client" section
-below). `base_url` is auto-discovered from `NYORA_BASE_URL` or the helper port
-file when `None`.
-
-```python
-helper = Nyora.helper()
-print(helper.health())
-helper.close()
-```
-
-#### `Nyora.managed_helper(jar_path, *, timeout=60.0, launch_timeout=20.0) -> nyora.client.Nyora`
-
-Classmethod. Launch a JVM helper from `jar_path` and return a
-`nyora.client.Nyora` client bound to the managed process. The process is stopped
-when the client is closed.
-
-#### `close() -> None`
-
-Close the embedded runtime and release its resources. Called automatically on
-context-manager exit.
-
-### `client.sources` — `DirectSourcesService`
-
-Operates over the **bundled** source catalog (no network needed to list).
-
-#### `list() -> list[Source]`
-
-List every bundled source.
-
-```python
-with Nyora() as client:
-    for source in client.sources.list():
-        print(source.id, source.name, source.lang)
-```
-
-Returns a list of [`Source`](#source).
-
-#### `find(query: str) -> Source`
-
-Return the first bundled source whose id **or** name contains `query`
-(case-insensitive). Raises `LookupError` if none match.
-
-```python
-with Nyora() as client:
-    source = client.sources.find("mangadex")
-```
-
-### `client.manga` — `DirectMangaService`
-
-Drives the parser runtime to browse, search, and read.
-
-#### `popular(source_id: str, page: int = 1) -> SearchPage`
-
-A page of popular manga from a source.
-
-```python
-page = client.manga.popular(source.id, page=1)
-print(len(page.entries), page.has_next_page)
-```
-
-Returns a [`SearchPage`](#searchpage).
-
-#### `latest(source_id: str, page: int = 1) -> SearchPage`
-
-A page of the latest-updated manga. Same shape as `popular`.
-
-#### `search(source_id: str, query: str, page: int = 1) -> SearchPage`
-
-Search a source for `query`.
-
-```python
-results = client.manga.search(source.id, "berserk", page=1)
-```
-
-Returns a [`SearchPage`](#searchpage).
-
-#### `details(source_id: str, manga_url: str, *, title: str = "") -> MangaDetails`
-
-Full metadata plus the chapter list for one manga. `title` is an optional known
-title passed through to help the parser resolve the entry.
-
-```python
-details = client.manga.details(source.id, entry.url, title=entry.title)
-print(details.manga.title, len(details.chapters))
-```
-
-Returns a [`MangaDetails`](#mangadetails).
-
-#### `pages(source_id: str, chapter_url: str, *, branch: str | None = None) -> list[MangaPage]`
-
-Resolve the readable image pages of one chapter. `branch` optionally selects a
-scanlation branch/translation.
-
-```python
-pages = client.manga.pages(source.id, chapter.url)
-for page in pages:
-    print(page.url, page.headers)
-```
-
-Returns a list of [`MangaPage`](#mangapage).
-
----
-
-## The helper client: `nyora.client.Nyora`
-
-Use this when an external Nyora helper is running (a Nyora app, the JVM helper,
-or an embedded `nyora.server.NyoraServer` — see the [server guide](server.md)).
-It speaks the camelCase helper REST contract over HTTP and exposes the **full**
-feature set: library, downloads, backup, cloud sync, trackers.
-
-```python
-from nyora import NyoraHelper  # this is nyora.client.Nyora
-
-with NyoraHelper.attach() as client:
-    for source in client.sources.list():
-        print(source.id, source.name)
-```
-
-### Construction and discovery
-
-- `NyoraHelper(base_url=None, *, timeout=60.0, helper=None)` — connect. When
-  `base_url` is `None`, the URL is discovered from the `NYORA_BASE_URL`
-  environment variable, then the helper port file. Raises
-  `nyora.HelperNotFoundError` if nothing is found.
-- `NyoraHelper.attach(base_url=None, *, timeout=60.0)` — classmethod alias for
-  attaching to an already-running helper.
-- `NyoraHelper.managed(jar_path=None, *, java="java", timeout=60.0, launch_timeout=20.0)`
-  — classmethod that launches a helper jar (path or `NYORA_HELPER_JAR`) and binds
-  a client to it. The process is owned and stopped on `close()`.
-
-Use it as a context manager; on exit it closes the HTTP connection and stops any
-managed helper.
-
 ### Low-level HTTP and health
 
-- `health() -> dict[str, Any]` — the helper's `/health` payload.
+- `health() -> dict[str, Any]` — the endpoint's `/health` payload.
 - `get(path, *, params=None) -> Any` — raw GET; returns parsed JSON or text.
 - `post(path, *, params=None, json=None, content=None) -> Any` — raw POST.
 - `delete(path, *, params=None) -> Any` — raw DELETE.
@@ -239,9 +86,9 @@ All raise `nyora.NyoraHTTPError` on a 4xx/5xx response.
 
 ### Service objects
 
-The helper client attaches six services. Methods that return model objects
-reference [`nyora.models`](#model-dataclasses); methods documented as returning
-`dict`/`list` return the raw helper payload.
+The client attaches six services. Methods that return model objects reference
+[`nyora.models`](#model-dataclasses); methods documented as returning
+`dict`/`list` return the raw payload.
 
 #### `client.sources` — `SourcesService`
 
@@ -250,11 +97,14 @@ reference [`nyora.models`](#model-dataclasses); methods documented as returning
 | `list()` | `list[Source]` — installed sources |
 | `catalog()` | `list[Source]` — every catalog source |
 | `refresh()` | `list[Source]` — after refreshing from the feed |
-| `install(source_id)` | `Source | dict` |
+| `install(source_id)` | `Source \| dict` |
 | `uninstall(source_id)` | `dict` |
 | `pin(source_id)` | `dict` |
 | `filters(source_id)` | `list[SourceFilter]` |
 | `find(query)` | `Source` (raises `LookupError`) |
+
+`find(query)` returns the first source whose id **or** name contains `query`
+(case-insensitive), and raises `LookupError` if none match.
 
 #### `client.manga` — `MangaService`
 
@@ -272,8 +122,19 @@ reference [`nyora.models`](#model-dataclasses); methods documented as returning
 | `save_prefs(manga_id, *, reader_mode="", brightness=0.0, contrast=1.0, saturation=1.0, hue=0.0, palette="")` | `dict` |
 | `clear_prefs(manga_id)` | `dict` |
 
-Note: on the **helper** client, `details` takes `manga_id` (not `title`), unlike
-the direct client's `details`.
+`details` takes an optional `manga_id=` to disambiguate an entry when the source
+needs it; the manga URL alone is usually enough. `pages` takes an optional
+`branch=` to select a scanlation branch/translation.
+
+```python
+with Nyora() as client:
+    source = client.sources.find("mangadex")
+    results = client.manga.search(source.id, "berserk", page=1)
+    details = client.manga.details(source.id, results.entries[0].url)
+    pages = client.manga.pages(source.id, details.chapters[0].url)
+    for page in pages:
+        print(page.url, page.headers)
+```
 
 #### `client.library` — `LibraryService`
 
@@ -290,7 +151,7 @@ the direct client's `details`.
 | `add_bookmark(*, manga_id, chapter_id, page, title="")` | `dict` |
 | `remove_bookmark(*, manga_id, chapter_id, page)` | `dict` |
 | `categories()` | `list[Category]` |
-| `create_category(title)` | `Category | dict` |
+| `create_category(title)` | `Category \| dict` |
 | `rename_category(category_id, title)` | `dict` |
 | `delete_category(category_id)` | `dict` |
 | `add_to_category(manga_id, category_id)` | `dict` |
@@ -319,8 +180,7 @@ the direct client's `details`.
 
 #### `client.system` — `SystemService`
 
-Composes three sub-services: `client.system.sync`, `client.system.local`,
-`client.system.tracker`.
+Composes two sub-services: `client.system.local` and `client.system.tracker`.
 
 | Method | Returns |
 | --- | --- |
@@ -329,20 +189,28 @@ Composes three sub-services: `client.system.sync`, `client.system.local`,
 | `save_network_settings(**settings)` | `dict` |
 | `ota_status()` | `dict` |
 | `ota_check()` | `dict` |
-| `sync.status()` | `dict` |
-| `sync.sign_in(id_token)` | `dict` |
-| `sync.sign_out()` | `dict` |
-| `sync.sync()` | `dict` |
-| `sync.restore_from_cloud()` | `dict` |
-| `sync.has_local_data()` | `bool` |
 | `local.scan(folder)` | `list[dict]` |
 | `local.chapter(cbz)` | `dict` |
 | `tracker.anilist_search(query)` | `dict` |
 | `tracker.anilist_scrobble(*, token, media_id, progress)` | `dict` |
 
-### `nyora.AsyncNyora`
+```{note}
+Cloud account and library sync are **not** on `client.system`. They live in the
+standalone {py:class}`nyora.sync.NyoraSync` client (OAuth2/JWT against the Nyora
+sync server). See the [sync guide](sync.md).
+```
 
-A lightweight async helper client for read-style requests:
+```{note}
+The full set of library, downloads, backup, and tracker features requires a
+deployment that implements those endpoints. Browse, search, details, and pages
+work against the default public cloud.
+```
+
+---
+
+## `nyora.AsyncNyora`
+
+A lightweight async client for read-style requests:
 
 ```python
 from nyora import AsyncNyora
@@ -353,25 +221,24 @@ async def main():
         health = await client.health()
 ```
 
-It exposes `attach`, `get(path, *, params=None)`, `health()`, and `close()`.
+It exposes `attach`, `get(path, *, params=None)`, `health()`, and `close()`, and
+resolves its base URL the same way as the synchronous client (falling back to the
+cloud).
 
 ---
 
 ## Error handling
 
-The full exception hierarchy lives in `nyora.errors` and is re-exported from the
+The exception hierarchy lives in `nyora.errors` and is re-exported from the
 top-level package. All SDK errors derive from `NyoraError`, so catching it
 catches everything.
 
 | Exception | Raised when |
 | --- | --- |
-| `NyoraError` | Base class for all SDK failures (also OTA and runtime errors). |
-| `HelperNotFoundError` | No running helper could be discovered for a helper client. |
+| `NyoraError` | Base class for all SDK failures. |
+| `HelperNotFoundError` | No endpoint could be discovered for a managed/attached client. |
 | `HelperLaunchError` | A managed helper process failed to start. |
-| `NyoraHTTPError` | The helper returned a 4xx/5xx. Has `.status_code` and `.body`. |
-
-`ParserRuntimeError` (in `nyora.runtime`, also a `NyoraError`) surfaces parser
-runtime failures from the direct client.
+| `NyoraHTTPError` | The endpoint returned a 4xx/5xx. Has `.status_code` and `.body`. |
 
 ```python
 from nyora import Nyora, NyoraError, NyoraHTTPError
@@ -386,7 +253,9 @@ except NyoraError as exc:
 ```
 
 `sources.find(...)` raises the standard library `LookupError` (not a
-`NyoraError`) when nothing matches.
+`NyoraError`) when nothing matches. The sync client raises
+{py:class}`nyora.sync.NotSignedInError` (a `RuntimeError`) when a sync operation
+is attempted before signing in — see the [sync guide](sync.md).
 
 ---
 
@@ -435,9 +304,9 @@ One page of results. Fields: `entries` (a `list[Manga]`), `has_next_page`.
 Full metadata plus chapters. Fields: `manga` (a `Manga`), `chapters`
 (a `list[MangaChapter]`).
 
-### Helper-only models
+### Library and system models
 
-These appear in responses from the **helper** client:
+These appear in responses from library, downloads, and system endpoints:
 
 - `HistoryEntry` — `manga`, `chapter_id`, `page`, `percent`, `updated_at`.
 - `Category` — `id`, `title`, `manga_count`.

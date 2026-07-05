@@ -1,6 +1,6 @@
 [project]
 name = "nyora"
-version = "0.3.3"
+version = "2.0.0"
 description = "Pure Python implementation of the Nyora manga engine"
 readme = "README.md"
 requires-python = ">=3.10"

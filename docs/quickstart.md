@@ -18,15 +18,16 @@ Nyora requires **Python 3.10 or newer**.
 pip install nyora
 ```
 
-That is all you need. The default client embeds the JavaScript parser bundle
-inside an in-process QuickJS runtime, so there is **no Node and no JVM helper**
-to install. HTTP is handled by `httpx` and HTML parsing by `selectolax`, both
-pulled in automatically.
+That is all you need. The default client is a thin HTTP client over the **Nyora
+cloud** ([`https://api.hasanraza.tech`](https://api.hasanraza.tech)), so there
+is **nothing else to run** — no local server and no Node process. HTTP is
+handled by `httpx`, which is pulled in automatically.
 
 ## The default client: `nyora.Nyora`
 
-`nyora.Nyora` (which is `nyora.direct.Nyora`) is the default, self-contained
-client. Use it as a context manager so the embedded runtime is closed cleanly:
+`nyora.Nyora` is the default client. By default it targets the Nyora cloud, so a
+bare `Nyora()` just works. Use it as a context manager so the HTTP connection is
+released cleanly:
 
 ```python
 from nyora import Nyora
@@ -35,10 +36,18 @@ with Nyora() as client:
     ...
 ```
 
-`client` exposes two service objects:
+`client` exposes several service objects; the two you need to browse and read
+are:
 
-- `client.sources` — list and find the bundled sources.
+- `client.sources` — list and find sources.
 - `client.manga` — browse popular/latest, search, fetch details and pages.
+
+```{tip}
+`Nyora()` resolves its base URL in order: an explicit `base_url` argument, the
+`NYORA_BASE_URL` environment variable, a running local helper's port file, and
+finally the public cloud (`nyora.CLOUD_BASE_URL`). Pass `Nyora(base_url=...)` to
+point at a different deployment.
+```
 
 ## List sources
 
@@ -90,13 +99,16 @@ with Nyora() as client:
     source = client.sources.find("mangadex")
     entry = client.manga.popular(source.id).entries[0]
 
-    details = client.manga.details(source.id, entry.url, title=entry.title)
+    details = client.manga.details(source.id, entry.url)
     print(details.manga.title)
     print("chapters:", len(details.chapters))
 
     first_chapter = details.chapters[0]
     print(first_chapter.number, first_chapter.title, first_chapter.url)
 ```
+
+`details` also accepts an optional `manga_id=` keyword to disambiguate an entry
+when the source needs it.
 
 ## Resolve the pages of a chapter
 
@@ -111,7 +123,7 @@ from nyora import Nyora
 with Nyora() as client:
     source = client.sources.find("mangadex")
     entry = client.manga.popular(source.id).entries[0]
-    details = client.manga.details(source.id, entry.url, title=entry.title)
+    details = client.manga.details(source.id, entry.url)
     chapter = details.chapters[0]
 
     pages = client.manga.pages(source.id, chapter.url)
@@ -124,25 +136,22 @@ with Nyora() as client:
     print("first page bytes:", len(image))
 ```
 
-## Keep parsers current (OTA)
+## Sync your library (optional)
 
-Parsers and the source catalog are delivered **over the air** so you get new and
-fixed sources without a package upgrade. On first run the SDK uses the parser
-bundle shipped inside the package, then you can pull the latest:
+Signed-in users can push and pull their library — favourites, history, and
+bookmarks — across devices with {py:class}`nyora.sync.NyoraSync`:
 
 ```python
-from nyora import Nyora
+from nyora.sync import NyoraSync
 
-with Nyora() as client:
-    available, installed, latest = client.check_update()
-    if available:
-        result = client.update()
-        print("updated:", result.updated, "version:", result.version)
+sync = NyoraSync()
+sync.sign_in("me@example.com", "hunter2")   # tokens persist to ~/.config/nyora/sync.json
+sync.upsert("nyora_favourite", [{"manga_id": "...", "sort_key": 0}])
+favourites = sync.select("nyora_favourite")
 ```
 
-`client.update()` downloads and verifies the latest bundle, then reloads the
-embedded runtime so the new parsers are live in the same process. See the
-[OTA guide](guide/ota.md) for cache locations and the offline fallback.
+See the [sync guide](guide/sync.md) for tables, token persistence, and the full
+API.
 
 ## Error handling
 
@@ -163,8 +172,8 @@ source matches.
 
 ## Next steps
 
-- [Library guide](guide/library.md) — every method, return types, the helper
-  client, and the model dataclasses.
-- [Server guide](guide/server.md) — run the helper-compatible REST server.
-- [OTA guide](guide/ota.md) — over-the-air parser updates in depth.
+- [Library guide](guide/library.md) — every method, return types, and the model
+  dataclasses.
+- [Sync guide](guide/sync.md) — cloud account and library sync in depth.
+- [CLI guide](guide/cli.md) — the `nyora-cli` command-line tool.
 - [API reference](reference/api.md) — full autodoc of every public symbol.
