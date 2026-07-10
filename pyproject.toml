@@ -1,14 +1,14 @@
 [project]
 name = "nyora"
-version = "2.0.2"
-description = "Python cloud client for Nyora — script your manga library, browse ~960 sources, and read in the terminal (TUI), with cloud sync."
+version = "2.0.3"
+description = "The manga reader SDK for Python — build a manga/manhwa/manhua reader with 363 working sources across 40 languages through one typed cloud API. A programmatic Tachiyomi/Mihon/Kotatsu alternative, with a CLI and terminal reader (TUI)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Md Hasan Raza" },
 ]
-keywords = ["nyora", "manga", "manhwa", "manhua", "sdk", "cli", "tui", "reader", "cloud"]
+keywords = ["nyora", "manga", "manga-reader", "manga-api", "manga-sdk", "manhwa", "manhua", "webtoon", "comics", "reader", "tachiyomi", "mihon", "kotatsu", "sdk", "cli", "tui"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any, cast
 
-from nyora.blocked_sources import BLOCKED_SOURCE_IDS
+from nyora.blocked_sources import is_blocked_source
 from nyora.models import Source, SourceFilter
 
 if TYPE_CHECKING:
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 def _keep(sources: builtins.list[Source]) -> builtins.list[Source]:
     """Drop dead / Cloudflare-walled sources from a catalog listing."""
-    return [s for s in sources if s.id not in BLOCKED_SOURCE_IDS]
+    return [s for s in sources if not is_blocked_source(s.id)]
 
 
 class SourcesService:

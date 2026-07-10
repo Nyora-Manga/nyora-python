@@ -7,7 +7,17 @@ from the catalog. IDs match the cloud helper's bare source id (no prefix).
 
 from __future__ import annotations
 
-#: Source ids hidden from ``list()`` / ``catalog()`` because they are dead or Cloudflare-walled.
+
+def is_blocked_source(source_id: str) -> bool:
+    """Return ``True`` if ``source_id`` is a dead / Cloudflare-walled source.
+
+    The cloud helper returns prefixed ids (``parser:NAME``) while this set
+    stores the bare names, so the prefix is stripped before comparison.
+    """
+    return source_id.rsplit(":", 1)[-1] in BLOCKED_SOURCE_IDS
+
+
+#: Bare source names hidden from ``list()`` / ``catalog()`` — dead or Cloudflare-walled.
 BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     (
     "ADONISFANSUB",

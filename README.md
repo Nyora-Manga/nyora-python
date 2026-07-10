@@ -2,17 +2,17 @@
 
 <img src="https://nyora.pages.dev/icon.png" width="120" alt="Nyora" />
 
-# Nyora — Python
+# Nyora — the manga reader SDK for Python
 
-### Read like the world can wait.
+### Build your own manga, manhwa & manhua reader in ~10 lines.
 
-The official Python SDK for **Nyora** — a thin cloud client that scripts your
-library, browses **~960 manga sources**, and fetches chapters and pages straight
-from Python. `pip install`, create a client, and you're scripting manga in 60
-seconds.
+**`nyora`** is the official Python SDK for [Nyora](https://nyora.pages.dev) — a thin
+cloud client that gives you **363 live, health-checked sources across 40 languages**
+through one typed API: search, browse, read chapters, download `.cbz`, and sync a
+library across devices. No scraper to maintain, no JVM, no parser engine on your
+machine — `pip install nyora` and you're reading in 60 seconds.
 
 <p>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <a href="https://pypi.org/project/nyora/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/nyora?style=for-the-badge&logo=pypi&logoColor=white" /></a>
   <a href="https://pypi.org/project/nyora/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/nyora?style=for-the-badge&logo=python&logoColor=white" /></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" /></a>
@@ -20,244 +20,287 @@ seconds.
 
 </div>
 
+> **In one line:** Nyora is the programmatic, cross-platform **Tachiyomi / Mihon /
+> Kotatsu alternative** — a manga API and reader SDK you can `import`. If you're
+> building a manga reader, a scanlation bot, a downloader, or a library manager in
+> Python, this is the fastest way to get **hundreds of working sources** without
+> writing or maintaining a single scraper.
+
 ---
 
-## What it is
+## Table of contents
 
-`nyora` is a **thin cloud client** for the Nyora manga engine. It talks to the
-public **Nyora cloud helper** at `https://api.hasanraza.tech` — the
-kotatsu-parsers JVM engine with **~960 sources** — over a small typed REST API.
-There is nothing to compile and no parser engine, JVM, Node.js, or bundle on your
-machine: a bare `Nyora()` points at the cloud by default, so you get the full
-catalog the moment you install.
+- [Why Nyora](#why-nyora)
+- [Install](#install)
+- [Quickstart — a working reader in 10 lines](#quickstart)
+- [Core concepts](#core-concepts)
+- [API reference](#api-reference)
+- [Recipes](#recipes)
+- [Chapter ordering (ascending vs descending sources)](#chapter-ordering)
+- [Cloud sync — a library across devices](#cloud-sync)
+- [Command line (`nyora-cli`)](#command-line)
+- [Interactive terminal reader (TUI)](#terminal-reader)
+- [How it works](#how-it-works)
+- [FAQ](#faq)
+- [Ecosystem](#ecosystem)
 
-This one install gives you three surfaces:
+---
 
-- a **Python library** you `import nyora` to script from your own code,
-- the **`nyora-cli`** command (one-shot subcommands + JSON output),
-- a **terminal reader (TUI)**, plus **Nyora Cloud Sync** for a signed-in library.
+## Why Nyora
+
+| | |
+|---|---|
+| 📚 **363 working sources** | Every source is live health-checked; 597 dead or Cloudflare-walled ones are auto-hidden, so `list()`/`catalog()` return only sources that actually work — **363 across 40 languages** (268 all-ages, 95 mature). |
+| 🌐 **One typed API** | `Source`, `Manga`, `MangaChapter`, `MangaPage`, `MangaDetails` dataclasses. Full type hints, `py.typed`, mypy-clean. |
+| ☁️ **Cloud-powered** | The [kotatsu-parsers](https://github.com/KotatsuApp/kotatsu-parsers) engine runs server-side. You get parsed results, not scraping headaches — nothing to compile, no JVM, no Node. |
+| 🔀 **Correct chapter order** | Built-in `next_chapter()` / `previous_chapter()` work on both ascending (MangaDex `0→N`) and descending (scanlation `N→0`) sources — no off-by-one "next goes backwards" bug. |
+| 🧰 **Batteries included** | A CLI, an interactive terminal reader (TUI), a `.cbz` downloader, and cross-device cloud sync — all in one `pip install`. |
+| ⚡ **Sync & async** | Use `Nyora` or `AsyncNyora` with identical APIs. |
+
+<a name="install"></a>
+## Install
 
 ```bash
-pip install nyora
+pip install nyora           # library + CLI + JSON output
+pip install "nyora[tui]"    # + the interactive terminal reader
 ```
 
-📖 Full documentation: **[nyora.pages.dev/docs/python](https://nyora.pages.dev/docs/python/)**
+Requires Python 3.10+. Nothing else — the parser engine lives in the cloud.
 
----
-
-## Quickstart
+<a name="quickstart"></a>
+## Quickstart — a working reader in 10 lines
 
 ```python
-from nyora import Nyora
+import nyora
 
-with Nyora() as client:                       # defaults to the Nyora cloud
-    source = client.sources.find("mangadex")  # resolve by id or fuzzy name
-    page = client.manga.popular(source.id)    # SearchPage of entries
-    entry = page.entries[0]
+with nyora.Nyora() as client:
+    source = client.sources.find("mangadex")           # pick any of 363 sources
+    hits = client.manga.search(source.id, "frieren")   # search it
+    manga = hits.entries[0]
 
-    details = client.manga.details(source.id, entry.url)
-    pages = client.manga.pages(source.id, details.chapters[0].url)
+    details = client.manga.details(source.id, manga.url, title=manga.title)
+    first = details.reading_order()[0]                 # earliest chapter, order-safe
 
-    for p in pages:
-        print(p.url)                           # page image URLs
+    for page in client.manga.pages(source.id, first.url, branch=first.branch):
+        print(page.url)                                # image URLs, ready to render
 ```
 
-The client exposes two typed namespaces:
+That's a complete read path: **source → search → details → chapter → page images.**
+Point an image widget (Pillow, a GUI, a web frontend) at those URLs and you have a reader.
 
-- **`client.sources`** — `list()` the loaded sources, `catalog()` the full
-  ~960-source catalog, or `find(query)` by **id** or fuzzy **name**.
-- **`client.manga`** — `popular(...)`, `latest(...)`, `search(...)`,
-  `details(...)`, and `pages(...)`.
+<a name="core-concepts"></a>
+## Core concepts
 
-### List and search sources
+A source exposes manga; a manga has chapters; a chapter has pages. Every step is one call.
 
-```python
-from nyora import Nyora
-
-with Nyora() as client:
-    for src in client.sources.catalog()[:10]:
-        print(src.id, src.name, src.lang)
-
-    src = client.sources.find("asura")
-    results = client.manga.search(src.id, "Solo Leveling")
-    print(results.entries[0].title)
+```
+Nyora ─┬─ sources   → Source        (a content site: MangaDex, Bato, …)
+       ├─ manga     → Manga          (a series: title, cover, authors, tags)
+       │             → MangaDetails  (Manga + its MangaChapter list)
+       │             → MangaChapter  (id, title, number, url, branch, uploadDate)
+       │             → MangaPage      (a single image url)
+       ├─ library   → favourites, history, bookmarks (local or synced)
+       └─ downloads → offline chapter management
 ```
 
-### Browse popular / latest
+Everything is a plain dataclass — `dataclasses.asdict()` to serialise, full type hints throughout.
+
+<a name="api-reference"></a>
+## API reference
+
+### Client
 
 ```python
-with Nyora() as client:
-    src = client.sources.find("mangadex").id
-
-    popular = client.manga.popular(src, page=1)
-    latest = client.manga.latest(src, page=1)
-
-    for entry in popular.entries[:5]:
-        print(entry.title, "—", entry.url)
+nyora.Nyora(base_url=None, *, timeout=60.0)      # sync client (context manager)
+nyora.AsyncNyora(base_url=None, *, timeout=60.0) # async client, identical API with await
 ```
 
-### Details and pages
+`base_url` defaults to the public Nyora cloud (`https://api.hasanraza.tech`). Attributes:
+`client.sources`, `client.manga`, `client.library`, `client.downloads`. Also `client.health()`.
+
+### `client.sources`
+
+| Method | Returns | Description |
+|---|---|---|
+| `list()` | `list[Source]` | Installed/loaded sources (dead ones hidden). |
+| `catalog()` | `list[Source]` | Every available source (dead ones hidden). |
+| `find(query)` | `Source` | First source whose id or name matches (case-insensitive). |
+| `filters(source_id)` | `list[SourceFilter]` | A source's supported search filters. |
+| `refresh()` / `install(id)` / `uninstall(id)` / `pin(id)` | — | Manage the loaded set. |
+
+### `client.manga`
+
+| Method | Returns | Description |
+|---|---|---|
+| `popular(source_id, page=1)` | `SearchPage` | Popular titles from a source. |
+| `latest(source_id, page=1)` | `SearchPage` | Recently updated titles. |
+| `search(source_id, query, page=1)` | `SearchPage` | Search one source. |
+| `global_search(query, *, limit_per_source=8)` | `list[GlobalSearchGroup]` | Search many sources at once. |
+| `details(source_id, url, *, title=None)` | `MangaDetails` | Full metadata **+ chapter list**. |
+| `pages(source_id, chapter_url, *, branch=None)` | `list[MangaPage]` | A chapter's image pages. |
+| `suggestions()` / `alternatives(title)` | `list[Manga]` / `list[dict]` | Recommendations / cross-source matches. |
+
+`SearchPage` has `.entries: list[Manga]` and `.has_next_page: bool` for pagination.
+
+### Chapter ordering helpers
 
 ```python
-with Nyora() as client:
-    src = client.sources.find("mangadex").id
-    entry = client.manga.popular(src).entries[0]
-
-    details = client.manga.details(src, entry.url)   # metadata + full chapter list
-    print(details.manga.title, "-", len(details.chapters), "chapters")
-
-    pages = client.manga.pages(src, details.chapters[0].url)  # branch=... optional
-    print([p.url for p in pages])
+nyora.next_chapter(chapters, current)       # -> MangaChapter | None
+nyora.previous_chapter(chapters, current)   # -> MangaChapter | None
+nyora.reading_order(chapters)               # -> list, earliest-first
+nyora.chapter_reading_delta(chapters)       # -> +1 (ascending) or -1 (descending)
+# convenience methods on MangaDetails:
+details.next_chapter(chapter)  /  details.previous_chapter(chapter)  /  details.reading_order()
 ```
 
-### Async fan-out
+### `client.library` (local, syncable)
 
-`AsyncNyora` mirrors the read API for concurrent requests across many sources:
+`history()`, `record_history(...)`, `favourites()`, `toggle_favourite(id)`, `is_favourite(id)`,
+`bookmarks()`, `add_bookmark(...)`, `remove_bookmark(...)`.
+
+<a name="recipes"></a>
+## Recipes
+
+**Browse popular with pagination**
 
 ```python
-import asyncio
-from nyora import AsyncNyora
+page = client.manga.popular(source.id, page=1)
+while True:
+    for m in page.entries:
+        print(m.title)
+    if not page.has_next_page:
+        break
+    page = client.manga.popular(source.id, page=page.number + 1)
+```
+
+**Search every source at once**
+
+```python
+for group in client.manga.global_search("solo leveling"):
+    print(group.source.name, "→", [m.title for m in group.entries])
+```
+
+**Download a chapter as a `.cbz`**
+
+```python
+from nyora.cli import _download_pages
+from pathlib import Path
+
+pages = client.manga.pages(source.id, chapter.url, branch=chapter.branch)
+_download_pages(pages, Path("solo-leveling-ch1"))
+```
+
+**Async**
+
+```python
+import asyncio, nyora
 
 async def main():
-    async with AsyncNyora() as client:
-        payload = await client.get("/sources")
-        print(len(payload.get("sources", [])), "sources")
+    async with nyora.AsyncNyora() as client:
+        src = await client.sources.find("mangadex")
+        page = await client.manga.popular(src.id)
+        print([m.title for m in page.entries])
 
 asyncio.run(main())
 ```
 
-> Point the client somewhere else with `Nyora(base_url=...)` or the
-> `NYORA_BASE_URL` environment variable — otherwise it uses
-> `https://api.hasanraza.tech`.
+<a name="chapter-ordering"></a>
+## Chapter ordering (ascending vs descending sources)
 
----
+Different sources return chapters in different orders — MangaDex lists oldest-first
+(`0 → N`), many scanlation sites list newest-first (`N → 0`). A naive `chapters[i+1]`
+"next chapter" therefore goes **backwards** on half of all sources. Nyora detects the
+direction from the chapter numbers so navigation is always correct:
 
-## Cloud Sync
+```python
+current = details.chapters[3]
+nxt = details.next_chapter(current)      # always the LATER chapter, any source order
+prv = details.previous_chapter(current)  # always the EARLIER chapter
+```
 
-`NyoraSync` is Nyora's account + library sync. It signs in against the sync
-server `https://stream.hasanraza.tech` (OAuth2 password grant + rotating JWT),
-then does last-write-wins `upsert`/`select` over your per-user tables
-(`nyora_manga`, `nyora_favourite`, `nyora_history`, `nyora_bookmark`, …). **One
-account is shared across the iOS app, the TUI, and the SDKs** — favourite a manga
-anywhere and it shows up everywhere.
+<a name="cloud-sync"></a>
+## Cloud sync — a library across devices
 
 ```python
 from nyora.sync import NyoraSync
 
-sync = NyoraSync()                          # -> https://stream.hasanraza.tech
-
-sync.register("me@example.com", "hunter2")  # or sync.sign_in(...) if you have an account
-sync.sign_in("me@example.com", "hunter2")
-
-# Push favourites (last-write-wins upsert)
-sync.upsert("nyora_favourite", [
-    {"manga_id": "abc123", "source": "mangadex", "title": "Solo Leveling"},
-])
-
-# Pull them back (optionally only rows changed after an ISO timestamp)
-rows = sync.select("nyora_favourite")
-print(rows)
-
-sync.sign_out()
+sync = NyoraSync()
+sync.sign_in("you@example.com", "password")   # or register(...)
+sync.upsert("nyora_favourite", [{ "manga_id": manga.url, "sort_key": 0 }])
+favs = sync.select("nyora_favourite")          # syncs across every Nyora app
 ```
 
-- **Methods:** `register`, `sign_in`, `sign_out`, `upsert(table, rows)`,
-  `select(table, since=None)`, plus the `is_signed_in` property.
-- **Tokens persist** to `~/.config/nyora/sync.json` (respects `XDG_CONFIG_HOME`),
-  so a session survives restarts. `sign_out()` deletes them.
-- Access tokens auto-refresh on a `401` using the stored refresh token.
+Same account and library as the Nyora apps on Android, iOS, macOS, Windows, Linux and web.
 
----
-
+<a name="command-line"></a>
 ## Command line (`nyora-cli`)
 
-Installing the package adds the **`nyora-cli`** command (aliased as `nyora`).
-
-> **Running bare `nyora-cli` launches the terminal reader (TUI).** Pass a
-> subcommand for a one-shot command instead.
-
 ```bash
-nyora-cli                              # no subcommand -> launches the TUI
-nyora-cli --help                       # list all commands and options
-nyora-cli sources --search asura
-nyora-cli search  -s asura "Solo Leveling"
+nyora-cli sources --search mangadex        # list/filter sources
+nyora-cli popular  -s MANGADEX             # popular titles
+nyora-cli search   -s MANGADEX "frieren"   # search
+nyora-cli details  -s MANGADEX <manga-url> # metadata + chapters
+nyora-cli pages    -s MANGADEX <chap-url>  # page image URLs
+nyora-cli download -s MANGADEX <chap-url>  # save a .cbz
+nyora-cli --json popular -s MANGADEX       # machine-readable output
 ```
 
-| Command | Description |
-|---|---|
-| `sources [--search Q]` | List the source catalog, or fuzzy-filter by name |
-| `search -s SRC [-p PAGE] QUERY` | Search a source |
-| `popular -s SRC [-p PAGE]` | Browse a source's popular titles |
-| `latest -s SRC [-p PAGE]` | Browse a source's latest updates |
-| `details -s SRC URL` | Fetch manga details and the full chapter list |
-| `pages -s SRC CHAPTER_URL [--branch B]` | Resolve page image URLs |
-| `download -s SRC CHAPTER_URL [-o OUT]` | Download one chapter as a `.cbz` archive |
-| `batch -s SRC MANGA_URL [-o DIR]` | Download every chapter, one `.cbz` each, into `DIR` |
-| `version` | Print the package version |
+Both `nyora` and `nyora-cli` are installed. Add `--json` to any command for scripting.
 
-`-s/--source` accepts a source **id** or a fuzzy **name**. Add the global
-`--json` flag to any subcommand to emit raw JSON for piping into `jq`:
+<a name="terminal-reader"></a>
+## Interactive terminal reader (TUI)
 
 ```bash
-nyora-cli --json popular -s mangadex -p 1 | jq '.entries[].title'
+pip install "nyora[tui]"
+nyora            # launch the full-screen reader — browse, search, read, download
 ```
 
----
+Pick a source → search or browse → open a chapter → page through it, with
+order-independent **next / previous chapter** navigation and inline downloads.
 
-## Terminal reader (TUI)
+<a name="how-it-works"></a>
+## How it works
 
-Run bare `nyora-cli` (or `nyora-tui`) to open the terminal reader: pick a source,
-browse popular/latest/search, open a title, and page through a chapter — without
-leaving the shell. It is non-TTY safe (prints a notice and exits cleanly when not
-interactive).
+`nyora` is a **thin cloud client**. It speaks a small typed REST API to the public
+**Nyora cloud helper** (`https://api.hasanraza.tech`) — the kotatsu-parsers JVM engine
+with hundreds of sources — so there is nothing to compile and no parser engine, JVM,
+Node.js, or bundle on your machine. Dead and Cloudflare-blocked sources are filtered
+out client-side from a periodically refreshed health-check, so you only ever see the
+**363 sources that actually return content**. Self-host the helper and point `base_url`
+at it if you'd rather run your own.
 
-The TUI is also the front-end for **Cloud Sync**:
+<a name="faq"></a>
+## FAQ
 
-- Type **`sync`** at the source filter to open the account menu (sign in /
-  register / sign out).
-- Type **`lib`** to browse your synced library.
-- When signed in, a manga's details show a **"Favourite to library?"** prompt —
-  favourites sync to your cloud account.
+**How do I build a manga reader in Python?**
+`pip install nyora`, then `search → details → pages` (see [Quickstart](#quickstart)).
+`client.manga.pages(...)` returns image URLs you can render in any UI.
 
-```bash
-nyora-cli        # launches the TUI
-nyora-tui        # also launches the TUI
-```
+**What's the best manga API / SDK?**
+Nyora gives you 363 working, health-checked sources across 40 languages behind one typed
+Python API — no scraper maintenance, plus a CLI, TUI, downloader and cloud sync.
 
----
+**Is this a Tachiyomi / Mihon / Kotatsu alternative?**
+Yes — it's the *programmatic* one. Those are Android apps; Nyora is an importable SDK
+(and cross-platform apps) built on the same open-source Kotatsu parser engine.
 
-## Installation
+**Do I need to run a server or a JVM?**
+No. The engine is hosted. `pip install` and go. You *can* self-host and set `base_url`.
 
-```bash
-pip install nyora
-```
+**Manga, manhwa or manhua?** All three — the sources cover Japanese, Korean and Chinese
+comics across 40 languages.
 
-Requires **Python 3.10+** and a network connection (all catalog/parsing work
-happens on the Nyora cloud helper). Prefer isolation? Use a virtualenv or
-[`pipx install nyora`](https://pipx.pypa.io/).
+**JavaScript / TypeScript?** Use the sibling SDK: [`nyora-sdk`](https://www.npmjs.com/package/nyora-sdk).
 
-| Install | Command | Adds |
-|---|---|---|
-| Default | `pip install nyora` | Library + `nyora-cli` + TUI + Cloud Sync |
-| Docs | `pip install "nyora[docs]"` | Sphinx + Furo to build the docs |
-| Dev | `pip install "nyora[dev]"` | Build, test, lint, publish tooling |
+<a name="ecosystem"></a>
+## Ecosystem
 
----
+- **JS/TS SDK** — [`nyora-sdk`](https://www.npmjs.com/package/nyora-sdk) (`npm i nyora-sdk`)
+- **Apps** — Android, iOS/iPadOS, macOS, Windows, Linux and a web app: <https://nyora.pages.dev>
+- **Docs** — <https://nyora.pages.dev/docs/python/>
+- **Source** — <https://github.com/Hasan72341/nyora-python>
 
-## Also from Nyora
+## License
 
-Nyora is a complete manga ecosystem — native apps for Android/iOS/macOS/Windows/
-Linux/Web, a JavaScript SDK (`npm install nyora-sdk`), and drop-in extensions:
-**[nyora-mihon](https://github.com/Hasan72341/nyora-mihon)** brings the whole
-catalog to stock Mihon and **[nyora-aidoku](https://github.com/Hasan72341/nyora-aidoku)**
-brings it to stock Aidoku on iOS — no app modification required.
-
----
-
-## Privacy & license
-
-No ads, no tracking, no telemetry. `nyora` is fully auditable, Apache-2.0
-open-source code. Developed and maintained by **Md Hasan Raza** —
-[GitHub](https://github.com/Hasan72341).
-
-> Nyora is not affiliated with any of the manga sources it can access.
+Apache-2.0. Nyora is built on the open-source Kotatsu parser engine and is not affiliated
+with Tachiyomi, Mihon or Kotatsu.
