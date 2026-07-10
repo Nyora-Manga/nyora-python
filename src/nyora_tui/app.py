@@ -725,10 +725,13 @@ def _rich_details(console, client, source, manga, choose, _R, Panel, sync=None) 
         if idx is None:
             return
         chapter = details.chapters[idx]
-        _rich_pages(console, client, source, chapter)
+        # Inner loop: reading a chapter can hand back the next/previous chapter
+        # (order-independent) so the reader flows without returning to the list.
+        while chapter is not None:
+            chapter = _rich_pages(console, client, source, chapter, details)
 
 
-def _rich_pages(console, client, source, chapter) -> None:
+def _rich_pages(console, client, source, chapter, details):
     from rich.table import Table
     from rich.prompt import Prompt
     from rich.markup import escape
@@ -738,21 +741,39 @@ def _rich_pages(console, client, source, chapter) -> None:
     pages, err = _safe(_fetch_pages, client, source.id, chapter.url, chapter.branch)
     if err:
         console.print(f"[red]Failed to load pages: {escape(err)}[/red]")
-        return
+        return None
     table = Table(title=f"{escape(chapter.title or chapter.id)} - {len(pages)} pages")
     table.add_column("#", justify="right", style="dim")
     table.add_column("Image URL")
     for i, p in enumerate(pages, 1):
         table.add_row(str(i), escape(p.url))
     console.print(table)
-    ans = Prompt.ask("Press Enter to go back, or type 'd' to download").strip().lower()
-    if ans == "d":
-        console.print("[cyan]Downloading...[/cyan]")
-        out_dir = Path("nyora-download").expanduser()
-        out_dir.mkdir(parents=True, exist_ok=True)
-        saved = _download_pages(pages, out_dir)
-        console.print(f"[green]Saved {len(saved)} pages to {out_dir}[/green]")
-        console.input("Press Enter to go back...")
+
+    while True:
+        # next/previous are resolved order-independently, so they always move to
+        # the later/earlier chapter regardless of how the source sorted the list.
+        nxt = details.next_chapter(chapter)
+        prv = details.previous_chapter(chapter)
+        opts = []
+        if nxt:
+            opts.append("[green]n[/green] next chapter")
+        if prv:
+            opts.append("[green]p[/green] prev chapter")
+        opts.append("[green]d[/green] download")
+        opts.append("[green]Enter[/green] back")
+        ans = Prompt.ask(" · ".join(opts)).strip().lower()
+        if ans == "n" and nxt:
+            return nxt
+        if ans == "p" and prv:
+            return prv
+        if ans == "d":
+            console.print("[cyan]Downloading...[/cyan]")
+            out_dir = Path("nyora-download").expanduser()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            saved = _download_pages(pages, out_dir)
+            console.print(f"[green]Saved {len(saved)} pages to {out_dir}[/green]")
+            continue
+        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -846,28 +867,47 @@ def _plain_details(client, source, manga, pick) -> None:
         )
         if idx is None:
             return
-        _plain_pages(client, source, details.chapters[idx])
+        chapter = details.chapters[idx]
+        while chapter is not None:
+            chapter = _plain_pages(client, source, chapter, details)
 
 
-def _plain_pages(client, source, chapter) -> None:
+def _plain_pages(client, source, chapter, details):
     from pathlib import Path
     from nyora.cli import _download_pages
 
     pages, err = _safe(_fetch_pages, client, source.id, chapter.url, chapter.branch)
     if err:
         print(f"Failed to load pages: {err}")
-        return
+        return None
     print(f"\n{chapter.title or chapter.id} - {len(pages)} pages")
     for i, p in enumerate(pages, 1):
         print(f"{i:>3}. {p.url}")
-    
-    ans = input("\nPress Enter to go back, or type 'd' to download: ").strip().lower()
-    if ans == "d":
-        print("Downloading...")
-        out_dir = Path("nyora-download").expanduser()
-        out_dir.mkdir(parents=True, exist_ok=True)
-        saved = _download_pages(pages, out_dir)
-        print(f"Saved {len(saved)} pages to {out_dir}")
+
+    while True:
+        # Order-independent next/previous — correct on ascending and descending sources.
+        nxt = details.next_chapter(chapter)
+        prv = details.previous_chapter(chapter)
+        opts = []
+        if nxt:
+            opts.append("n=next")
+        if prv:
+            opts.append("p=prev")
+        opts.append("d=download")
+        opts.append("Enter=back")
+        ans = input("\n" + ", ".join(opts) + ": ").strip().lower()
+        if ans == "n" and nxt:
+            return nxt
+        if ans == "p" and prv:
+            return prv
+        if ans == "d":
+            print("Downloading...")
+            out_dir = Path("nyora-download").expanduser()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            saved = _download_pages(pages, out_dir)
+            print(f"Saved {len(saved)} pages to {out_dir}")
+            continue
+        return None
         input("Press Enter to go back...")
 
 

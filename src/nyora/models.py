@@ -362,6 +362,29 @@ class MangaDetails:
             chapters=[MangaChapter.from_json(item) for item in _list(obj.get("chapters"))],
         )
 
+    def reading_order(self) -> list[MangaChapter]:
+        """Return the chapters in canonical reading order (earliest first).
+
+        Sources order their chapter arrays inconsistently (ascending on some,
+        descending on others); this normalises them so index ``0`` is always
+        the earliest chapter.
+        """
+        from nyora.ordering import reading_order
+
+        return reading_order(self.chapters)
+
+    def next_chapter(self, current: MangaChapter) -> MangaChapter | None:
+        """Return the next (later) chapter after ``current``, order-independent."""
+        from nyora.ordering import next_chapter
+
+        return next_chapter(self.chapters, current)
+
+    def previous_chapter(self, current: MangaChapter) -> MangaChapter | None:
+        """Return the previous (earlier) chapter before ``current``, order-independent."""
+        from nyora.ordering import previous_chapter
+
+        return previous_chapter(self.chapters, current)
+
 
 @dataclass(slots=True)
 class HistoryEntry:

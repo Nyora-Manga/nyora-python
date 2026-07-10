@@ -42,6 +42,13 @@ from nyora.models import (
     SourceFilter,
     Stats,
 )
+from nyora.ordering import (
+    adjacent_chapter,
+    chapter_reading_delta,
+    next_chapter,
+    previous_chapter,
+    reading_order,
+)
 from nyora.sync import NotSignedInError, NyoraSync
 
 #: Backwards-compatible alias: the cloud client used to be exposed separately.
@@ -72,4 +79,9 @@ __all__ = [
     "Source",
     "SourceFilter",
     "Stats",
+    "adjacent_chapter",
+    "chapter_reading_delta",
+    "next_chapter",
+    "previous_chapter",
+    "reading_order",
 ]

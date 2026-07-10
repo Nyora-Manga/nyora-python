@@ -1,6 +1,6 @@
 [project]
 name = "nyora"
-version = "2.0.1"
+version = "2.0.2"
 description = "Python cloud client for Nyora — script your manga library, browse ~960 sources, and read in the terminal (TUI), with cloud sync."
 readme = "README.md"
 requires-python = ">=3.10"
