@@ -5,10 +5,16 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any, cast
 
+from nyora.blocked_sources import BLOCKED_SOURCE_IDS
 from nyora.models import Source, SourceFilter
 
 if TYPE_CHECKING:
     from nyora.client import Nyora
+
+
+def _keep(sources: builtins.list[Source]) -> builtins.list[Source]:
+    """Drop dead / Cloudflare-walled sources from a catalog listing."""
+    return [s for s in sources if s.id not in BLOCKED_SOURCE_IDS]
 
 
 class SourcesService:
@@ -32,7 +38,7 @@ class SourcesService:
             The installed :class:`~nyora.models.Source` records.
         """
         data = cast(dict[str, Any], self._client.get("/sources"))
-        return [Source.from_json(item) for item in data.get("sources", data.get("entries", []))]
+        return _keep([Source.from_json(item) for item in data.get("sources", data.get("entries", []))])
 
     def catalog(self) -> builtins.list[Source]:
         """List every source available in the catalog (installed or not).
@@ -41,7 +47,7 @@ class SourcesService:
             All catalog :class:`~nyora.models.Source` records.
         """
         data = cast(dict[str, Any], self._client.get("/sources/catalog"))
-        return [Source.from_json(item) for item in data.get("entries", [])]
+        return _keep([Source.from_json(item) for item in data.get("entries", [])])
 
     def refresh(self) -> builtins.list[Source]:
         """Refresh the source catalog from the remote feed.
@@ -50,7 +56,7 @@ class SourcesService:
             The refreshed list of :class:`~nyora.models.Source` records.
         """
         data = cast(dict[str, Any], self._client.post("/sources/refresh"))
-        return [Source.from_json(item) for item in data.get("sources", data.get("entries", []))]
+        return _keep([Source.from_json(item) for item in data.get("sources", data.get("entries", []))])
 
     def install(self, source_id: str) -> Source | dict[str, Any]:
         """Install a source by id.
