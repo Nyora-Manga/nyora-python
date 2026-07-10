@@ -1,0 +1,43 @@
+# Nyora Python
+
+> The official Python SDK, CLI and terminal reader for Nyora — build a manga, manhwa or manhua reader with 363 working sources (of ~960 in the cloud catalog) across 40 languages through one typed cloud API. As of v2.0 it is a thin cloud client: `Nyora()` talks to the hosted Nyora cloud helper at https://api.hasanraza.tech (the open-source Kotatsu parser engine). No local parser engine, no JavaScript bridge, no OTA bundle — just `pip install nyora`. A programmatic Tachiyomi / Mihon / Kotatsu alternative. Adds NyoraSync cloud sync for one account shared across the whole ecosystem. Package: `nyora` (PyPI), latest 2.0.3, Apache-2.0, Python 3.10+.
+
+Docs base: https://nyora.pages.dev/docs/python/
+
+## Documentation
+- [Overview](https://nyora.pages.dev/docs/python/index.html): What Nyora Python is and how the pieces fit.
+- [Quickstart](https://nyora.pages.dev/docs/python/quickstart.html): Install and make your first calls (find a source, search, details, pages).
+- [Library guide](https://nyora.pages.dev/docs/python/guide/library.html): The `nyora.Nyora` cloud client — `sources.list()/catalog()/find()` and `manga.popular()/latest()/search()/global_search()/details()/pages()`, the typed dataclasses (Source, Manga, MangaChapter, MangaPage, MangaDetails, SearchPage), and error handling. Sync (`Nyora`) and async (`AsyncNyora`) have identical APIs.
+- [Command line (nyora-cli)](https://nyora.pages.dev/docs/python/guide/cli.html): Full CLI manual — `sources | popular | latest | search | details | pages | download | version`; bare `nyora-cli` launches the TUI. Download chapters as `.cbz`. Add `--json` to any command.
+- [Terminal UI (TUI)](https://nyora.pages.dev/docs/python/guide/tui.html): The interactive reader — browse, search, read, with order-independent next/previous-chapter navigation; `sync` for the account menu, `lib` for the synced library.
+- [Cloud sync (NyoraSync)](https://nyora.pages.dev/docs/python/guide/sync.html): `nyora.sync.NyoraSync` — email + password (OAuth2 password grant + JWT) against https://stream.hasanraza.tech, then last-write-wins upsert/select over per-user tables (nyora_manga, nyora_favourite, nyora_history, nyora_bookmark). Methods: `register`, `sign_in`, `sign_out`, `upsert(table, rows)`, `select(table, since)`. Tokens persist to `~/.config/nyora/sync.json`. ONE account shared across the iOS app, the TUIs and both SDKs.
+- [AI agent guide](https://nyora.pages.dev/docs/python/guide/agents.html): Driving Nyora programmatically from an LLM agent.
+- [API reference](https://nyora.pages.dev/docs/python/reference/api.html): Full autodoc API for every public class and function.
+
+## Chapter ordering (order-independent navigation)
+Sources list chapters oldest-first (0→N) or newest-first (N→0); these helpers make "next"/"previous" always correct regardless. Top-level functions and convenience methods on `MangaDetails`:
+- `nyora.next_chapter(chapters, current)` → MangaChapter | None
+- `nyora.previous_chapter(chapters, current)` → MangaChapter | None
+- `nyora.reading_order(chapters)` → list, earliest first
+- `nyora.chapter_reading_delta(chapters)` → +1 (ascending) or -1 (descending)
+- `details.next_chapter(chapter)` / `details.previous_chapter(chapter)` / `details.reading_order()`
+
+## Install
+- `pip3 install nyora`  ·  with the TUI: `pip3 install "nyora[tui]"`
+
+## Quickstart — a working reader
+```python
+import nyora
+with nyora.Nyora() as client:
+    source = client.sources.find("mangadex")
+    hits = client.manga.search(source.id, "frieren")
+    details = client.manga.details(source.id, hits.entries[0].url, title=hits.entries[0].title)
+    first = details.reading_order()[0]                      # earliest chapter, order-safe
+    for page in client.manga.pages(source.id, first.url, branch=first.branch):
+        print(page.url)                                     # image URLs, ready to render
+```
+
+## Related
+- JavaScript twin: https://nyora.pages.dev/docs/js/  (`npm i nyora-sdk`)
+- Website & downloads: https://nyora.pages.dev
+- Repository: https://github.com/Hasan72341/nyora-python

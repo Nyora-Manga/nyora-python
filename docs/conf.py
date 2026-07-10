@@ -131,3 +131,6 @@ html_theme_options = {
         "color-sidebar-link-text--top-level": "#fffce1",
     },
 }
+
+# Copy the LLM-friendly index into the built docs root.
+html_extra_path = ["llms.txt"]
