@@ -103,12 +103,12 @@ EN: dict[str, str] = {
     "reader.offline": "offline",
     # -- library / history / downloads --------------------------------------
     "library.title": "Library",
-    "library.empty": "Your library is empty. Favourite a title to see it here.",
+    "library.empty": "No favourites yet. Open a title and press f to add it.",
     "library.favourites": "Favourites",
     "history.title": "History",
-    "history.empty": "No reading history yet.",
+    "history.empty": "No history yet. Read a chapter and it shows up here.",
     "downloads.title": "Downloads",
-    "downloads.empty": "No downloads yet.",
+    "downloads.empty": "No downloads yet. Press d on a chapter to download it.",
     "downloads.read_offline": "Read offline",
     # -- source browser / language navigator --------------------------------
     "sources.title": "Sources",

@@ -1071,7 +1071,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 table.add_columns("title", "source")
                 self._items = self._lib.favourites()
                 if not self._items:
-                    msg.update("[dim]No favourites yet. Open a title and press f to add it.[/]")
+                    msg.update(f"[dim]{t('library.empty')}[/]")
                     return
                 msg.update("")
                 for i, it in enumerate(self._items):
@@ -1082,7 +1082,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 table.add_columns("manga", "chapter", "pages", "when")
                 self._items = self._dl.entries()
                 if not self._items:
-                    msg.update("[dim]No downloads yet. Press d on a chapter to download it.[/]")
+                    msg.update(f"[dim]{t('downloads.empty')}[/]")
                     return
                 msg.update("")
                 for i, it in enumerate(self._items):
@@ -1222,7 +1222,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             table.clear()
             self._items = self._lib.history()
             if not self._items:
-                msg.update("[dim]No history yet. Read a chapter and it shows up here.[/]")
+                msg.update(f"[dim]{t('history.empty')}[/]")
                 self.query_one("#hist_head", Static).update("History")
                 return
             msg.update("")
@@ -2448,14 +2448,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             if nxt:
                 self._open_chapter(nxt)
             else:
-                self.notify("No next chapter.", severity="warning")
+                self.notify(t("reader.no_next"), severity="warning")
 
         def action_prev_chapter(self) -> None:
             prv = self._details.previous_chapter(self.chapter) if self._details else None
             if prv:
                 self._open_chapter(prv)
             else:
-                self.notify("No previous chapter.", severity="warning")
+                self.notify(t("reader.no_prev"), severity="warning")
 
         # -- mode / fit ---------------------------------------------------- #
         def action_cycle_mode(self) -> None:
