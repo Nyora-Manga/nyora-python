@@ -848,9 +848,20 @@ def _slug_from_url(url: str) -> str:
     return _safe_name(segment) or "chapter"
 
 
+#: Windows reserved device names — a file so named (even with an extension) is
+#: not a real file, so slugs must not collapse to one of these.
+_WIN_RESERVED = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
+
 def _safe_name(value: str) -> str:
-    cleaned = "".join(c if (c.isalnum() or c in "._-") else "_" for c in value)
-    return cleaned.strip("_")[:120]
+    cleaned = "".join(c if (c.isalnum() or c in "._-") else "_" for c in value).strip("_")[:120]
+    if cleaned and cleaned.split(".", 1)[0].upper() in _WIN_RESERVED:
+        cleaned = f"_{cleaned}"  # e.g. CON -> _CON so it's a valid file on Windows
+    return cleaned
 
 
 def _page_headers(page: MangaPage) -> dict[str, str]:

@@ -31,11 +31,23 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Windows reserved device names — a path segment equal to one of these is not a
+# real file even with an extension, so a slug must never collapse to one.
+_WIN_RESERVED = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
+
 def _slug(text: str, limit: int = 60) -> str:
-    """Filesystem-safe slug for a title/source/chapter name."""
+    """Filesystem-safe slug for a title/source/chapter name (Windows-safe)."""
     text = re.sub(r"[^\w .()\-]+", "", (text or "").strip())
     text = re.sub(r"\s+", " ", text).strip()
-    return (text or "untitled")[:limit]
+    slug = (text or "untitled")[:limit]
+    if slug.split(".", 1)[0].upper() in _WIN_RESERVED:
+        slug = f"_{slug}"
+    return slug
 
 
 def manga_entry(source_id: str, manga: Any) -> dict[str, Any]:

@@ -78,6 +78,12 @@ EN: dict[str, str] = {
     "nav.back": "Back",
     "nav.home": "Home",
     "nav.open": "Open",
+    "nav.settings": "Settings",
+    # -- toasts / status -----------------------------------------------------
+    "toast.not_installed": "That source isn’t installed here.",
+    "toast.added": "Added to library.",
+    "toast.removed": "Removed from library.",
+    "toast.syncing": "syncing with cloud…",
     # -- common --------------------------------------------------------------
     "common.loading": "Loading…",
     "common.no_results": "Nothing here yet.",
@@ -101,6 +107,11 @@ EN: dict[str, str] = {
     "reader.downloading": "Downloading {title}…",
     "reader.saved": "Saved {name}",
     "reader.offline": "offline",
+    "reader.already_downloaded": "This chapter is already downloaded.",
+    "reader.nothing_to_download": "Nothing to download yet.",
+    "reader.no_offline_pages": "No downloaded pages found on disk.",
+    "details.loading": "loading…",
+    "details.chapters": "chapters",
     # -- library / history / downloads --------------------------------------
     "library.title": "Library",
     "library.empty": "No favourites yet. Open a title and press f to add it.",

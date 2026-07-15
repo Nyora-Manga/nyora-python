@@ -296,9 +296,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         "  [b]3[/]  [b]enter[/] a title → chapters → [b]enter[/] to read\n\n"
         "[$secondary]Handy keys[/]\n"
         "  [b]j k[/] move   [b]g G[/] top/bottom   [b]x[/] toggle 18+   [b]a[/] account\n"
-        "  [b]?[/] all keybindings   ·   [b]ctrl+p[/] command palette   ·   [b]q[/] quit\n\n"
-        "[dim]Sources are grouped by language. Nothing is hosted here — Nyora reads\n"
-        "publicly available sources through the bundled engine.[/]"
+        "  [b]t[/] theme   [b]L[/] languages   [b],[/] settings   [b]?[/] all keys\n"
+        "  [b]ctrl+p[/] command palette   ·   [b]q[/] quit\n\n"
+        "[dim]Sources are grouped by language ([b]L[/] to jump). Change your app\n"
+        "language, theme and sources anytime with [b],[/] (settings).[/]"
     )
 
     def _timed(fn, *a, **k):
@@ -341,13 +342,13 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             or "kitty" in _term
             or _os.environ.get("KITTY_WINDOW_ID")
         )
-        # Windows Terminal (>=1.22, Feb 2024) supports the Sixel protocol but is
-        # missed by textual-image's DA1 probe on Windows, so detect it via
-        # WT_SESSION and prefer Sixel directly. Older Windows Terminal / classic
-        # conhost have no graphics — users there set NYORA_TUI_IMAGE=halfcell.
-        _windows_terminal = bool(
-            _os.environ.get("WT_SESSION") or "windows terminal" in _prog
-        )
+        # Windows Terminal has exported WT_SESSION since 2019, but Sixel only
+        # landed in WT 1.22 (Feb 2024) and WT exposes no version variable — so
+        # WT_SESSION alone must NOT force Sixel (older WT would spray raw escape
+        # codes). We instead default to the capability-probing auto renderer and
+        # only upgrade WT to Sixel when the pixel-geometry query below actually
+        # answers (a modern, graphics-capable session). See the post-probe block.
+        _windows_terminal = bool(_os.environ.get("WT_SESSION"))
         _forced = {
             "tgp": _TGPImage,
             "sixel": _SixelImage,
@@ -360,9 +361,6 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         elif _kitty_like:
             _IMAGE_CLS = _TGPImage
             _PROTOCOL = "tgp"
-        elif _windows_terminal:
-            _IMAGE_CLS = _SixelImage
-            _PROTOCOL = "sixel"
         else:
             _IMAGE_CLS = _AutoImage
             try:
@@ -371,14 +369,24 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 _PROTOCOL = _AutoRenderable.__module__.rsplit(".", 1)[-1]
             except Exception:  # noqa: BLE001
                 _PROTOCOL = "auto"
+        _cell_ok = False
         try:
             from textual_image._terminal import get_cell_size
 
             cell = get_cell_size()
             if cell and cell.width and cell.height:
                 _CELL_W, _CELL_H = int(cell.width), int(cell.height)
+                _cell_ok = True
         except Exception:  # noqa: BLE001 - no TTY / query unsupported
             pass
+        # Modern Windows Terminal answers the pixel-geometry query; a pre-Sixel WT
+        # (or classic conhost) does not, so it safely stays on auto/half-cell.
+        if (
+            _windows_terminal and _cell_ok and _override not in _forced
+            and not _kitty_like and _IMAGE_CLS is _AutoImage
+        ):
+            _IMAGE_CLS = _SixelImage
+            _PROTOCOL = "sixel"
     except Exception:  # noqa: BLE001 - textual-image absent or no graphics support
         _IMAGE_CLS = None
 
@@ -447,6 +455,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 (t("nav.history"), app.action_history, "Recent reading history"),
                 (t("nav.account"), app.action_account, "Sign in or out of Nyora sync"),
                 (t("theme.title"), app.action_themes, "Pick a colour theme + light/dark"),
+                (t("nav.settings"), app.action_settings, "Change language, theme, sources"),
                 (t("keys.title"), app.action_help, "Show the keybinding cheat sheet"),
             ]
 
@@ -494,6 +503,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             "[b $accent]Sections[/]",
             "  [b]1[/]  browse / sources     [b]2[/]  library",
             "  [b]3[/]  history              [b]a[/]  account / sync",
+            "  [b]t[/]  colour theme         [b]L[/]  language navigator",
+            "  [b],[/]  settings             [b]?[/]  this help",
             "",
             "[b $accent]Browse[/]",
             "  [b]/[/]  search             [b]f[/]  filter sources",
@@ -534,11 +545,11 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def compose(self) -> ComposeResult:
             yield Header(show_clock=True)
-            yield Static("❀ Nyora — all keybindings", id="keys_title")
+            yield Static(f"❀ {t('keys.title')}", id="keys_title")
             with Horizontal(id="keys_cols"):
                 yield Static("\n".join(self._LEFT), classes="keys_col")
                 yield Static("\n".join(self._RIGHT), classes="keys_col")
-            yield Static("[dim]esc · ? · F1 · q  to close[/]", id="keys_foot")
+            yield Static(f"[dim]{_esc(t('keys.hint'))}[/]", id="keys_foot")
             yield Footer()
 
         def action_close(self) -> None:
@@ -1045,9 +1056,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
             n_fav = len(self._lib.favourites())
             n_dl = len(self._dl.entries())
+            fav_label = f"{t('library.favourites')} · {n_fav}"
+            dl_label = f"{t('downloads.title')} · {n_dl}"
             self.query_one("#lib_tabs", Static).update(
-                f"{pill('fav', f'FAVOURITES · {n_fav}', 'tab_fav')}   "
-                f"{pill('dl', f'DOWNLOADS · {n_dl}', 'tab_dl')}"
+                f"{pill('fav', fav_label, 'tab_fav')}   {pill('dl', dl_label, 'tab_dl')}"
             )
 
         def action_tab_fav(self) -> None:
@@ -1097,7 +1109,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def action_reload(self) -> None:
             if self._tab == "fav" and self._sync.is_signed_in:
-                self.query_one("#lib_msg", Static).update("[dim]syncing with cloud…[/]")
+                self.query_one("#lib_msg", Static).update(f"[dim]{_esc(t('toast.syncing'))}[/]")
                 self._sync_cloud()
             else:
                 self._build()
@@ -1122,7 +1134,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 self._lib.remove_favourite(mid)
                 if self._sync.is_signed_in:
                     _safe(self._sync.unfavourite, mid)
-                self.notify("Removed from library.", severity="information")
+                self.notify(t("toast.removed"), severity="information")
             self._render_tabs()
             self._build()
 
@@ -1141,7 +1153,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
             src = self._by_id.get(it.get("source", ""))
             if src is None:
-                self.notify("That source isn't installed here.", severity="warning")
+                self.notify(t("toast.not_installed"), severity="warning")
                 return
             manga = Manga(id=it.get("manga_id", ""), title=it.get("title", ""),
                           url=it.get("url", ""), cover_url=it.get("cover", ""))
@@ -1207,7 +1219,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def compose(self) -> ComposeResult:
             yield Header(show_clock=True)
-            yield Static("History", id="hist_head")
+            yield Static(t("history.title"), id="hist_head")
             yield DataTable(id="hist_table", cursor_type="row", zebra_stripes=True)
             yield Static("", id="hist_msg")
             yield Footer()
@@ -1247,7 +1259,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             it = self._items[idx]
             src = self._by_id.get(it.get("source", ""))
             if src is None:
-                self.notify("That source isn't installed here.", severity="warning")
+                self.notify(t("toast.not_installed"), severity="warning")
                 return
             manga = Manga(id=it.get("manga_id", ""), title=it.get("title", ""),
                           url=it.get("url", ""), cover_url=it.get("cover", ""))
@@ -1324,6 +1336,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             Binding("a", "account", "Account", show=False),
             Binding("t", "themes", "Theme", show=False),
             Binding("L", "language_nav", "Languages", show=False),
+            Binding("comma", "settings", "Settings", show=False),
             Binding("question_mark,f1", "help", "Help"),
             Binding("escape", "focus_sidebar", "Sources", show=False),
             Binding("j", "cursor_down", "Down", show=False),
@@ -1358,11 +1371,11 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             yield Header(show_clock=True)
             with Horizontal():
                 with Vertical(id="sidebar"):
-                    yield Input(placeholder="filter sources  (↓ / esc → list)", id="src_filter")
+                    yield Input(placeholder=t("sources.filter"), id="src_filter")
                     yield DataTable(id="src_table", cursor_type="row", zebra_stripes=True)
                 with Vertical(id="main"):
                     yield Static("", id="modebar")
-                    yield Input(placeholder="search  (/) — blank = popular", id="q")
+                    yield Input(placeholder=t("common.search_placeholder"), id="q")
                     yield Static(_WELCOME, id="welcome")
                     yield DataTable(id="results", cursor_type="row", zebra_stripes=True)
             yield Static("", id="statusbar")
@@ -1704,11 +1717,18 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def action_focus_filter(self) -> None:
             self.query_one("#src_filter", Input).focus()
 
+        def action_settings(self) -> None:
+            """Re-open onboarding preferences as a settings screen (change anytime)."""
+            self.push_screen(PreferencesScreen(self._sync))
+
         def action_language_nav(self) -> None:
             """Open the language navigator and jump the source list to the choice."""
             from collections import Counter
 
-            counts = Counter((s.lang or "").strip().lower() for s in self._visible_sources())
+            # List over ALL sources (not just the currently-visible/filtered set) so
+            # a language hidden by the onboarding filter can still be picked — and
+            # picking it un-hides that language below.
+            counts = Counter((s.lang or "").strip().lower() for s in self._sources)
             langs = [
                 (code, _lang_display(code), counts[code])
                 for code in sorted(counts, key=_lang_sort_key)
@@ -1721,13 +1741,28 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def _on_language_chosen(self, code: str | None) -> None:
             if not code:
                 return
-            # Show all sources (clear any text filter) then scroll to the group.
+            # If the language filter is hiding this language, add it (and persist)
+            # so the jump actually reveals its sources instead of no-op'ing.
+            if self._languages and code not in self._languages:
+                self._languages = self._languages | {code}
+                try:
+                    from nyora.config import set_languages
+
+                    set_languages(sorted(self._languages))
+                except Exception:  # noqa: BLE001 - persistence is best-effort
+                    pass
+            # Clear any text filter, then jump AFTER the deferred re-render settles
+            # (setting Input.value posts a Changed that re-renders asynchronously,
+            # which would otherwise reset the cursor we move here).
             self.query_one("#src_filter", Input).value = ""
+            self.call_after_refresh(self._jump_to_language, code)
+
+        def _jump_to_language(self, code: str) -> None:
             self._render_sources("")
             table = self.query_one("#src_table", DataTable)
             try:
                 row = table.get_row_index(f"hdr:{code}")
-            except Exception:  # noqa: BLE001 - language may not be present after filter
+            except Exception:  # noqa: BLE001 - language may not be present
                 return
             table.move_cursor(row=row, animate=False)
             table.focus()
@@ -1883,10 +1918,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 # Top-aligned scrollable column: metadata first (title pinned to
                 # the top), cover below it, so an absent cover leaves no gap.
                 with VerticalScroll(id="d_side"):
-                    yield Static("loading…", id="d_meta")
+                    yield Static(t("details.loading"), id="d_meta")
                     yield Vertical(id="d_cover")
                 with Vertical(id="d_main"):
-                    yield Static("chapters", id="d_head")
+                    yield Static(t("details.chapters"), id="d_head")
                     yield DataTable(id="chapters", cursor_type="row", zebra_stripes=True)
             yield Footer()
 
@@ -2022,7 +2057,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                     _safe(self._sync.unfavourite, manga_id_of(manga))
             self._render_meta()
             self.notify(
-                "Added to library." if fav else "Removed from library.", severity="information"
+                t("toast.added") if fav else t("toast.removed"), severity="information"
             )
 
         def action_download(self) -> None:
@@ -2033,7 +2068,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             if not (0 <= row < len(self._details.chapters)):
                 return
             chapter = self._details.chapters[row]
-            self.notify(f"Downloading {chapter.title or chapter.id}…", severity="information")
+            self.notify(
+                t("reader.downloading", title=chapter.title or chapter.id),
+                severity="information",
+            )
             self._download_chapter(chapter)
 
         @work(exclusive=False, thread=True, group="dl")
@@ -2146,7 +2184,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             yield Header(show_clock=True)
             yield Static("", id="reader_head")
             with VerticalScroll(id="pages_container"):
-                yield Static("resolving pages…", id="reader_status")
+                yield Static(t("reader.resolving"), id="reader_status")
             yield Static("", id="reader_foot")
             yield Footer()
 
@@ -2188,7 +2226,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             container = self.query_one("#pages_container", VerticalScroll)
             container.remove_children()
             if not imgs:
-                container.mount(Static("[warning]No downloaded pages found on disk.[/]"))
+                container.mount(Static(f"[warning]{_esc(t('reader.no_offline_pages'))}[/]"))
                 self._done_flag = True
                 return
             self._pages = [None] * len(imgs)
@@ -2441,7 +2479,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._render_head()
             container = self.query_one("#pages_container", VerticalScroll)
             container.remove_children()
-            container.mount(Static("resolving pages…", id="reader_status"))
+            container.mount(Static(t("reader.resolving"), id="reader_status"))
             self._load()
 
         def action_next_chapter(self) -> None:
@@ -2564,13 +2602,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         # -- download ------------------------------------------------------ #
         def action_download(self) -> None:
             if self._local_cbz:
-                self.notify("This chapter is already downloaded.", severity="information")
+                self.notify(t("reader.already_downloaded"), severity="information")
                 return
             if not self._pages or self._source is None:
-                self.notify("Nothing to download yet.", severity="warning")
+                self.notify(t("reader.nothing_to_download"), severity="warning")
                 return
             self.notify(
-                f"Downloading {self.chapter.title or self.chapter.id}…", severity="information"
+                t("reader.downloading", title=self.chapter.title or self.chapter.id),
+                severity="information",
             )
             self._save_cbz()
 
