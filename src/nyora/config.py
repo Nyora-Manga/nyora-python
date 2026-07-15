@@ -87,6 +87,22 @@ def set_config_theme(theme_id: str | None) -> None:
     write_config(data)
 
 
+def read_ui_lang() -> str | None:
+    """Return the user's persisted TUI interface language code, or ``None``."""
+    lang = read_config().get("ui_lang")
+    return lang if isinstance(lang, str) and lang.strip() else None
+
+
+def set_ui_lang(code: str | None) -> None:
+    """Persist (or clear, when ``code`` is falsy) the TUI interface language."""
+    data = read_config()
+    if code:
+        data["ui_lang"] = code
+    else:
+        data.pop("ui_lang", None)
+    write_config(data)
+
+
 def read_onboarded() -> bool:
     """Return whether the user has passed the welcome screen at least once."""
     return bool(read_config().get("onboarded"))

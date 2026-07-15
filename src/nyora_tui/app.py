@@ -230,6 +230,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
     # the CLI palette can track the reader's chosen scheme too. Over a shared
     # neutral base per appearance. Sakura leads — it is the default.
     from nyora.theme import SCHEMES as _SCHEMES
+    from nyora_tui.i18n import t  # localised UI strings (TUI is available in ~40 languages)
     from nyora_tui.store import Downloads, LocalLibrary, manga_id_of
     from nyora_tui.sync import BROWSER_UA, TuiSync
     # `label` = neutral secondary-text colour, readable on either appearance. Only
@@ -340,6 +341,13 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             or "kitty" in _term
             or _os.environ.get("KITTY_WINDOW_ID")
         )
+        # Windows Terminal (>=1.22, Feb 2024) supports the Sixel protocol but is
+        # missed by textual-image's DA1 probe on Windows, so detect it via
+        # WT_SESSION and prefer Sixel directly. Older Windows Terminal / classic
+        # conhost have no graphics — users there set NYORA_TUI_IMAGE=halfcell.
+        _windows_terminal = bool(
+            _os.environ.get("WT_SESSION") or "windows terminal" in _prog
+        )
         _forced = {
             "tgp": _TGPImage,
             "sixel": _SixelImage,
@@ -352,6 +360,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         elif _kitty_like:
             _IMAGE_CLS = _TGPImage
             _PROTOCOL = "tgp"
+        elif _windows_terminal:
+            _IMAGE_CLS = _SixelImage
+            _PROTOCOL = "sixel"
         else:
             _IMAGE_CLS = _AutoImage
             try:
@@ -650,32 +661,23 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def compose(self) -> ComposeResult:
             with Vertical(id="w_box"):
                 yield Static("[b $accent]NYORA[/]   [dim]破壊[/]")
-                yield Static("[$secondary]Manga, anywhere the night takes you[/]")
+                yield Static(f"[$secondary]{_esc(t('app.tagline'))}[/]")
                 yield Static("")
-                yield Static("[b]Read like the world can wait.[/]")
-                yield Static(
-                    "[dim]Nyora pulls hundreds of sources into one quiet shelf and remembers\n"
-                    "exactly where you stopped — on every device. Sign in to sync and back it\n"
-                    "up, or just start reading.[/]"
-                )
+                yield Static(f"[b]{_esc(t('welcome.headline'))}[/]")
+                yield Static(f"[dim]{_esc(t('welcome.blurb'))}[/]")
                 yield Static("")
-                yield Static(
-                    "[$secondary]Hundreds of sources   ·   Picks up on every device   ·   "
-                    "No ads, ever[/]"
-                )
+                yield Static(f"[$secondary]{_esc(t('welcome.features'))}[/]")
                 yield Static("")
-                yield Static("[b]Start reading[/]")
+                yield Static(f"[b]{_esc(t('welcome.start_reading'))}[/]")
                 with Vertical(id="w_form"):
-                    yield Input(placeholder="Email", id="w_email")
-                    yield Input(placeholder="Password", password=True, id="w_pw")
+                    yield Input(placeholder=t("welcome.email"), id="w_email")
+                    yield Input(placeholder=t("welcome.password"), password=True, id="w_pw")
                 yield Static("", id="w_msg")
                 with Horizontal(id="w_actions"):
-                    yield Button("Sign in", id="w_signin", variant="primary")
-                    yield Button("Create account", id="w_register")
-                    yield Button("Continue as guest", id="w_guest")
-                yield Static(
-                    "[dim]No account needed — go in as a guest and sync whenever you like.[/]"
-                )
+                    yield Button(t("welcome.sign_in"), id="w_signin", variant="primary")
+                    yield Button(t("welcome.create_account"), id="w_register")
+                    yield Button(t("welcome.guest"), id="w_guest")
+                yield Static(f"[dim]{_esc(t('welcome.guest_hint'))}[/]")
 
         def on_mount(self) -> None:
             self.query_one("#w_email", Input).focus()
@@ -711,48 +713,57 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def _do_signin(self) -> None:
             email, pw = self._creds()
             if not email or not pw:
-                self._msg("[warning]Enter your email and password.[/]")
+                self._msg(f"[warning]{_esc(t('welcome.enter_creds'))}[/]")
                 return
-            self._msg("[dim]Signing in…[/]")
+            self._msg(f"[dim]{_esc(t('welcome.signing_in'))}[/]")
             try:
                 self._sync.sign_in(email, pw)
-                self._msg("[success]Welcome back.[/]")
+                self._msg(f"[success]{_esc(t('welcome.welcome_back'))}[/]")
                 self._finish()
             except Exception as exc:  # noqa: BLE001
-                self._msg(f"[error]Sign-in failed: {_esc(str(exc))}[/]")
+                self._msg(f"[error]{_esc(t('welcome.signin_failed', error=str(exc)))}[/]")
 
         def _do_register(self) -> None:
             email, pw = self._creds()
             if not email or not pw:
-                self._msg("[warning]Enter your email and password.[/]")
+                self._msg(f"[warning]{_esc(t('welcome.enter_creds'))}[/]")
                 return
-            self._msg("[dim]Creating your account…[/]")
+            self._msg(f"[dim]{_esc(t('welcome.creating'))}[/]")
             try:
                 self._sync.register(email, pw)
                 if not self._sync.is_signed_in:
                     self._sync.sign_in(email, pw)
-                self._msg("[success]Account ready.[/]")
+                self._msg(f"[success]{_esc(t('welcome.account_ready'))}[/]")
                 self._finish()
             except Exception as exc:  # noqa: BLE001
-                self._msg(f"[error]Sign-up failed: {_esc(str(exc))}[/]")
+                self._msg(f"[error]{_esc(t('welcome.signup_failed', error=str(exc)))}[/]")
 
     # ----------------------------------------------------------------------- #
-    # Set up your shelf — languages + content rating (mirrors nyora-web).
+    # Set up your shelf — app language + theme + source languages + 18+.
     # ----------------------------------------------------------------------- #
     class PreferencesScreen(Screen):
-        """One-time setup: pick languages and 18+ preference, then start reading."""
+        """One-time setup: app language, colour theme, source languages and 18+.
 
-        BINDINGS = [Binding("enter", "start", "Start reading")]
+        Language and theme apply live (the interface re-labels itself and the
+        theme previews as you change them), so the choice is what you see.
+        """
+
+        BINDINGS = [
+            Binding("ctrl+s", "start", "Start reading"),
+            Binding("enter", "start", "Start reading", show=False),
+        ]
         CSS = """
         PreferencesScreen { align: center middle; background: $background; }
         #p_box {
-            width: 74; height: auto; max-height: 96%;
+            width: 82; height: auto; max-height: 96%;
             border: round $primary; background: $surface; padding: 2 4;
         }
-        #p_nsfw_row { height: 3; margin: 1 0 0 0; }
-        #p_nsfw_row Static { padding-top: 1; }
-        #p_langs { height: auto; max-height: 14; margin-top: 1; border: round $panel; }
+        #p_box Select { margin-top: 1; width: 100%; }
+        .p_row { height: 3; margin-top: 1; }
+        .p_row Static { padding-top: 1; }
+        #p_langs { height: auto; max-height: 10; margin-top: 1; border: round $panel; }
         #p_actions { height: 3; margin-top: 1; }
+        .p_head { margin-top: 1; }
         """
 
         def __init__(self, sync) -> None:
@@ -761,27 +772,43 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._populated = False
 
         def compose(self) -> ComposeResult:
-            from textual.widgets import SelectionList, Switch
+            from textual.widgets import Select, SelectionList, Switch
+
+            from nyora_tui.i18n import available_languages, current_language
+
+            cur = self.app.theme
+            scheme, light = _scheme_of(cur), _is_light(cur)
+            lang_opts = [(name, code) for code, name in available_languages()]
+            theme_opts = [(name, sid) for sid, name, _l, _d in _SCHEMES]
 
             with Vertical(id="p_box"):
-                yield Static("[$secondary]You’re in[/]")
-                yield Static("[b]Set up your shelf[/]")
+                yield Static(f"[$secondary]{_esc(t('prefs.youre_in'))}[/]", id="p_kicker")
+                yield Static(f"[b]{_esc(t('prefs.title'))}[/]", id="p_title")
+                yield Static(f"[dim]{_esc(t('prefs.blurb'))}[/]", id="p_blurb")
+
+                yield Static(f"[$secondary]{_esc(t('prefs.app_language'))}[/]", classes="p_head",
+                             id="p_lang_head")
+                yield Select(lang_opts, value=current_language(), allow_blank=False, id="p_uilang")
+
+                yield Static(f"[$secondary]{_esc(t('prefs.theme'))}[/]", classes="p_head",
+                             id="p_theme_head")
+                yield Select(theme_opts, value=scheme, allow_blank=False, id="p_scheme")
+                with Horizontal(classes="p_row", id="p_light_row"):
+                    yield Switch(value=light, id="p_light_sw")
+                    yield Static(f"  {_esc(t('theme.light'))}", id="p_light_lbl")
+
+                with Horizontal(classes="p_row", id="p_nsfw_row"):
+                    yield Switch(value=not getattr(self.app, "_hide_nsfw", True), id="p_nsfw_sw")
+                    yield Static(f"  {_esc(t('prefs.show_nsfw'))}", id="p_nsfw_lbl")
+
                 yield Static(
-                    "[dim]Choose your languages and content preference — we’ll show the\n"
-                    "matching sources. You can change any of this later.[/]"
-                )
-                yield Static("")
-                with Horizontal(id="p_nsfw_row"):
-                    yield Switch(value=False, id="p_nsfw_sw")
-                    yield Static("  Show 18+ sources")
-                yield Static("[dim]Include adult-only sources in browse & search.[/]")
-                yield Static("")
-                yield Static(
-                    "[$secondary]Languages[/]   [dim]· space to toggle · none = all languages[/]"
+                    f"[$secondary]{_esc(t('prefs.source_langs'))}[/]   "
+                    f"[dim]· {_esc(t('prefs.source_langs_hint'))}[/]",
+                    classes="p_head", id="p_srclang_head",
                 )
                 yield SelectionList(id="p_langs")
                 with Horizontal(id="p_actions"):
-                    yield Button("Start reading", id="p_start", variant="primary")
+                    yield Button(t("prefs.start_reading"), id="p_start", variant="primary")
 
         def on_mount(self) -> None:
             self._timer = self.set_interval(0.3, self._populate)
@@ -799,19 +826,88 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             if not srcs:
                 return
             sl = self.query_one("#p_langs", SelectionList)
+            preselect = set(getattr(self.app, "_languages", set()) or set())
             counts = Counter((s.lang or "").strip().lower() for s in srcs)
             for code in sorted(counts, key=_lang_sort_key):
-                sl.add_option(Selection(f"{_lang_display(code)}   ({counts[code]})", code, False))
+                sl.add_option(
+                    Selection(f"{_lang_display(code)}   ({counts[code]})", code, code in preselect)
+                )
             self._populated = True
             self._timer.stop()
+
+        def on_select_changed(self, event) -> None:
+            """Apply app-language and theme choices live as they change."""
+            from textual.widgets import Select
+
+            if event.value is Select.BLANK:
+                return
+            if event.select.id == "p_uilang":
+                from nyora_tui.i18n import set_language
+
+                set_language(str(event.value))
+                self._relabel()
+            elif event.select.id == "p_scheme":
+                self._apply_theme_preview()
+
+        def on_switch_changed(self, event) -> None:
+            if event.switch.id == "p_light_sw":
+                self._apply_theme_preview()
+
+        def _apply_theme_preview(self) -> None:
+            from textual.widgets import Select, Switch
+
+            scheme = self.query_one("#p_scheme", Select).value
+            if scheme is Select.BLANK:
+                return
+            light = self.query_one("#p_light_sw", Switch).value
+            self.app.theme = _theme_name(str(scheme), light)
+
+        def _relabel(self) -> None:
+            """Re-render the screen's own labels after an app-language change."""
+            pairs = {
+                "p_kicker": f"[$secondary]{_esc(t('prefs.youre_in'))}[/]",
+                "p_title": f"[b]{_esc(t('prefs.title'))}[/]",
+                "p_blurb": f"[dim]{_esc(t('prefs.blurb'))}[/]",
+                "p_lang_head": f"[$secondary]{_esc(t('prefs.app_language'))}[/]",
+                "p_theme_head": f"[$secondary]{_esc(t('prefs.theme'))}[/]",
+                "p_light_lbl": f"  {_esc(t('theme.light'))}",
+                "p_nsfw_lbl": f"  {_esc(t('prefs.show_nsfw'))}",
+                "p_srclang_head": (
+                    f"[$secondary]{_esc(t('prefs.source_langs'))}[/]   "
+                    f"[dim]· {_esc(t('prefs.source_langs_hint'))}[/]"
+                ),
+            }
+            for wid, text in pairs.items():
+                try:
+                    self.query_one(f"#{wid}", Static).update(text)
+                except Exception:  # noqa: BLE001 - a missing label must never crash
+                    pass
+            try:
+                self.query_one("#p_start", Button).label = t("prefs.start_reading")
+            except Exception:  # noqa: BLE001
+                pass
 
         def on_button_pressed(self, event: Button.Pressed) -> None:
             self.action_start()
 
         def action_start(self) -> None:
-            from textual.widgets import SelectionList, Switch
+            from textual.widgets import Select, SelectionList, Switch
 
-            from nyora.config import set_languages, set_onboarded, set_show_nsfw
+            from nyora.config import (
+                set_config_theme,
+                set_languages,
+                set_onboarded,
+                set_show_nsfw,
+                set_ui_lang,
+            )
+            from nyora_tui.i18n import set_language
+
+            # Persist the app language + theme chosen above (already applied live).
+            uilang = self.query_one("#p_uilang", Select).value
+            if uilang is not Select.BLANK:
+                set_ui_lang(str(uilang))
+                set_language(str(uilang))
+            set_config_theme(self.app.theme)
 
             show = self.query_one("#p_nsfw_sw", Switch).value
             langs = [str(v) for v in self.query_one("#p_langs", SelectionList).selected]
@@ -1208,6 +1304,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         # -- lifecycle ----------------------------------------------------- #
         def on_mount(self) -> None:
+            from nyora_tui.i18n import init_from_config
+
+            init_from_config()  # load the persisted UI language before any screen
             for theme in _THEMES.values():
                 self.register_theme(theme)
             from nyora.config import read_theme_from_config
