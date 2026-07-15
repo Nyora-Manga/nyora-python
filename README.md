@@ -51,7 +51,7 @@ to maintain. You're reading in 60 seconds.
 
 | | |
 |---|---|
-| 📚 **390 working sources** | Every source is live health-checked; 570 dead or Cloudflare-walled ones are auto-hidden, so `list()`/`catalog()` return only sources that actually work — **390 across 40 languages** (268 all-ages, 95 mature). |
+| 📚 **390 working sources** | Every source is live health-checked; 570 dead or Cloudflare-walled ones are auto-hidden, so `list()`/`catalog()` return only sources that actually work — **390 across 40 languages** (289 all-ages, 101 mature). |
 | 🌐 **One typed API** | `Source`, `Manga`, `MangaChapter`, `MangaPage`, `MangaDetails` dataclasses. Full type hints, `py.typed`, mypy-clean. |
 | 📦 **Self-contained** | Bundles the [kotatsu-parsers](https://github.com/KotatsuApp/kotatsu-parsers) engine and runs it locally (auto-downloads a JRE if you have no Java). Parsed results, not scraping headaches — nothing to compile, no Node, no server. |
 | 🔀 **Correct chapter order** | Built-in `next_chapter()` / `previous_chapter()` work on both ascending (MangaDex `0→N`) and descending (scanlation `N→0`) sources — no off-by-one "next goes backwards" bug. |
