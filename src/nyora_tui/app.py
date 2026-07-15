@@ -434,19 +434,20 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def _specs(self):
             app: Any = self.app
             return [
-                ("Popular", app.action_popular, "Browse popular in this source"),
-                ("Latest", app.action_latest, "Browse latest updates in this source"),
-                ("Search", app.action_focus_search, "Search the current source"),
+                (t("nav.popular"), app.action_popular, "Browse popular in this source"),
+                (t("nav.latest"), app.action_latest, "Browse latest updates in this source"),
+                (t("nav.search"), app.action_focus_search, "Search the current source"),
+                (t("nav.language"), app.action_language_nav, "Jump to a source language"),
                 ("Refresh", app.action_refresh, "Re-fetch the current view"),
                 ("Next page", app.action_next_page, "Go to the next page"),
                 ("Previous page", app.action_prev_page, "Go to the previous page"),
                 ("Toggle NSFW", app.action_toggle_nsfw, "Show or hide adult sources/results"),
-                ("Filter sources", app.action_focus_filter, "Jump to the source filter"),
-                ("Library", app.action_library, "Your synced favourites"),
-                ("History", app.action_history, "Recent reading history"),
-                ("Account / sync", app.action_account, "Sign in or out of Nyora sync"),
-                ("Color scheme", app.action_themes, "Pick a colour theme + light/dark"),
-                ("Help", app.action_help, "Show the keybinding cheat sheet"),
+                (t("sources.filter"), app.action_focus_filter, "Jump to the source filter"),
+                (t("nav.library"), app.action_library, "Your synced favourites"),
+                (t("nav.history"), app.action_history, "Recent reading history"),
+                (t("nav.account"), app.action_account, "Sign in or out of Nyora sync"),
+                (t("theme.title"), app.action_themes, "Pick a colour theme + light/dark"),
+                (t("keys.title"), app.action_help, "Show the keybinding cheat sheet"),
             ]
 
         async def discover(self) -> Hits:
@@ -634,6 +635,75 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             app.theme = self._original
             app.pop_screen()
             app._on_theme_changed(app.theme)
+
+    # ----------------------------------------------------------------------- #
+    # Language navigator — jump the source list to any of the 40 languages.
+    # ----------------------------------------------------------------------- #
+    class LanguageNavScreen(ModalScreen):
+        """Filterable list of source languages; select one to jump to its group."""
+
+        BINDINGS = [Binding("escape", "cancel", "Cancel")]
+        CSS = """
+        LanguageNavScreen { align: center middle; }
+        #lang_box {
+            width: 52; height: auto; max-height: 90%;
+            border: round $primary; background: $surface; padding: 1 2;
+        }
+        #lang_head { padding: 0 0 1 0; }
+        #lang_filter {
+            height: 3; padding: 0 1; border: round $panel; background: $background;
+        }
+        #lang_filter:focus { border: round $primary; }
+        #lang_list { height: auto; max-height: 18; background: $surface; }
+        """
+
+        def __init__(self, langs) -> None:
+            super().__init__()
+            self._langs = langs  # list of (code, display, count)
+            self._view = list(langs)
+
+        def compose(self) -> ComposeResult:
+            from textual.widgets import OptionList
+
+            with Vertical(id="lang_box"):
+                yield Static(
+                    f"[b $accent]❀ {_esc(t('langnav.title'))}[/]\n"
+                    f"[dim]{_esc(t('langnav.hint'))}[/]",
+                    id="lang_head",
+                )
+                yield Input(placeholder=t("sources.filter"), id="lang_filter")
+                yield OptionList(id="lang_list")
+
+        def on_mount(self) -> None:
+            self._fill("")
+            self.query_one("#lang_filter", Input).focus()
+
+        def _fill(self, query: str) -> None:
+            from textual.widgets import OptionList
+            from textual.widgets.option_list import Option
+
+            ol = self.query_one("#lang_list", OptionList)
+            ol.clear_options()
+            q = query.strip().lower()
+            self._view = [
+                x for x in self._langs if not q or q in x[1].lower() or q in x[0].lower()
+            ]
+            for code, disp, count in self._view:
+                ol.add_option(Option(f"{_esc(disp)}   [dim]({count})[/]", id=code))
+
+        def on_input_changed(self, event: Input.Changed) -> None:
+            self._fill(event.value)
+
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            # Enter in the filter jumps to the first match.
+            if self._view:
+                self.dismiss(self._view[0][0])
+
+        def on_option_list_option_selected(self, event) -> None:
+            self.dismiss(event.option.id)
+
+        def action_cancel(self) -> None:
+            self.dismiss(None)
 
     # ----------------------------------------------------------------------- #
     # Welcome / sign-in (branded, guest-optional — mirrors nyora-web).
@@ -1253,6 +1323,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             Binding("3", "history", "History"),
             Binding("a", "account", "Account", show=False),
             Binding("t", "themes", "Theme", show=False),
+            Binding("L", "language_nav", "Languages", show=False),
             Binding("question_mark,f1", "help", "Help"),
             Binding("escape", "focus_sidebar", "Sources", show=False),
             Binding("j", "cursor_down", "Down", show=False),
@@ -1632,6 +1703,34 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def action_focus_filter(self) -> None:
             self.query_one("#src_filter", Input).focus()
+
+        def action_language_nav(self) -> None:
+            """Open the language navigator and jump the source list to the choice."""
+            from collections import Counter
+
+            counts = Counter((s.lang or "").strip().lower() for s in self._visible_sources())
+            langs = [
+                (code, _lang_display(code), counts[code])
+                for code in sorted(counts, key=_lang_sort_key)
+                if code
+            ]
+            if not langs:
+                return
+            self.push_screen(LanguageNavScreen(langs), self._on_language_chosen)
+
+        def _on_language_chosen(self, code: str | None) -> None:
+            if not code:
+                return
+            # Show all sources (clear any text filter) then scroll to the group.
+            self.query_one("#src_filter", Input).value = ""
+            self._render_sources("")
+            table = self.query_one("#src_table", DataTable)
+            try:
+                row = table.get_row_index(f"hdr:{code}")
+            except Exception:  # noqa: BLE001 - language may not be present after filter
+                return
+            table.move_cursor(row=row, animate=False)
+            table.focus()
 
         def action_popular(self) -> None:
             self._mode, self._page, self._query = "popular", 1, ""
