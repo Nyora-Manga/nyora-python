@@ -226,25 +226,12 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         Static,
     )
 
+    # Named colour schemes (light accent / dark accent) live in nyora.theme so
+    # the CLI palette can track the reader's chosen scheme too. Over a shared
+    # neutral base per appearance. Sakura leads — it is the default.
+    from nyora.theme import SCHEMES as _SCHEMES
     from nyora_tui.store import Downloads, LocalLibrary, manga_id_of
     from nyora_tui.sync import BROWSER_UA, TuiSync
-
-    # Named colour schemes ported from nyora-web: each is a Material accent with
-    # a light and a dark variant (+ a secondary tone), over a shared neutral
-    # base per appearance. Sakura leads — it is the default.
-    # Format: (id, display name, light accent, dark accent).
-    _SCHEMES = [
-        ("sakura", "Sakura", "#8C4A60", "#FFB1C8"),
-        ("totoro", "Totoro", "#3C6090", "#A6C8FF"),
-        ("miku", "Miku", "#00696D", "#6FDDE2"),
-        ("asuka", "Asuka", "#904A40", "#FFB4A8"),
-        ("mion", "Mion", "#3B693A", "#A1D39A"),
-        ("rikka", "Rikka", "#68548D", "#D3BBFD"),
-        ("mamimi", "Mamimi", "#465D91", "#AFC6FF"),
-        ("kanade", "Kanade", "#353543", "#EDEDF2"),
-        ("itsuka", "Itsuka", "#974800", "#FFBA8F"),
-        ("yuki", "Yuki", "#43474A", "#3B3F42"),
-    ]
     # `label` = neutral secondary-text colour, readable on either appearance. Only
     # the accent carries scheme identity — like nyora-web.
     _DARK_BASE = {"bg": "#0C0C0E", "surface": "#16161A", "panel": "#26262B", "fg": "#F2F2F4",
@@ -287,7 +274,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
     for _sid, _nm, _light, _dark in _SCHEMES:
         _THEMES[_sid] = _make_theme(_sid, _dark, _DARK_BASE, True)
         _THEMES[f"{_sid}-light"] = _make_theme(f"{_sid}-light", _light, _LIGHT_BASE, False)
-    _DEFAULT_THEME = "sakura"
+    from nyora.theme import DEFAULT_SCHEME as _DEFAULT_THEME
 
     def _scheme_of(theme_name: str) -> str:
         return theme_name[:-6] if theme_name.endswith("-light") else theme_name

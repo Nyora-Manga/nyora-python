@@ -32,35 +32,44 @@ from nyora.errors import NyoraError
 from nyora.models import Manga, MangaDetails, MangaPage, SearchPage, Source
 
 # --------------------------------------------------------------------------- #
-# Visual identity — the "Sakura" palette, shared with the Nyora TUI so the CLI
-# and the terminal reader look like one product. Semantic style names (not raw
-# colours) are used in markup throughout, so a future re-theme is one edit here.
+# Visual identity — the CLI palette tracks the *same* colour scheme the reader
+# picked in the TUI (persisted in config, shared table in nyora.theme), so the
+# CLI and terminal reader always look like one product. The accent carries the
+# scheme's identity; only accent-bearing styles change per theme — semantic
+# colours (rating amber, 18+ red, URL blue…) stay fixed for readability.
 # --------------------------------------------------------------------------- #
-_PINK = "#ff8fb1"        # sakura accent (readable on dark terminals)
-_ROSE = "#c9718a"        # deeper rose for borders / secondary chrome
-_THEME = Theme(
-    {
-        "nyora.brand": f"bold {_PINK}",
-        "nyora.title": f"bold {_PINK}",
-        "nyora.header": f"bold {_PINK}",
-        "nyora.border": _ROSE,
-        "nyora.muted": "grey58",
-        "nyora.index": "grey42",
-        "nyora.link": "#8fb8ff",       # soft blue for URLs
-        "nyora.rating": "#f6c177",      # amber stars
-        "nyora.lang": "#8fd6c0",        # teal language tags
-        "nyora.nsfw": "bold #ff6b6b",   # 18+ badge
-        "nyora.pin": "#f6c177",
-        "nyora.ok": "bold #a7e0a0",
-        "nyora.warn": "#f6c177",
-        "nyora.err": "bold #ff6b6b",
-        # Override Rich's defaults (table titles are italic by default) so our
-        # bold-pink titles render cleanly.
-        "table.title": "",
-        "table.caption": "dim",
-    }
-)
 _FLOWER = "❀"  # sakura mark used as a small brand flourish on titles
+
+
+def _build_theme() -> Theme:
+    """Build the Rich theme from the reader's persisted colour scheme."""
+    from nyora import theme as _t
+    from nyora.config import read_theme_from_config
+
+    accent = _t.accent_for(read_theme_from_config())
+    border = _t.mix(accent, "#7d7d85", 0.5)   # muted accent for table borders
+    return Theme(
+        {
+            "nyora.brand": f"bold {accent}",
+            "nyora.title": f"bold {accent}",
+            "nyora.header": f"bold {accent}",
+            "nyora.border": border,
+            "nyora.muted": "grey58",
+            "nyora.index": "grey42",
+            "nyora.link": "#8fb8ff",       # soft blue for URLs (readable on any accent)
+            "nyora.rating": "#f6c177",      # amber stars
+            "nyora.lang": "#8fd6c0",        # teal language tags
+            "nyora.nsfw": "bold #ff6b6b",   # 18+ badge
+            "nyora.pin": "#f6c177",
+            "nyora.ok": "bold #a7e0a0",
+            "nyora.warn": "#f6c177",
+            "nyora.err": "bold #ff6b6b",
+            # Override Rich's defaults (table titles are italic by default) so our
+            # bold accent titles render cleanly.
+            "table.title": "",
+            "table.caption": "dim",
+        }
+    )
 
 #: User-Agent for direct image downloads (the helper rewrites cover/page
 #: hosts; a browser UA keeps CDNs happy).
@@ -991,14 +1000,14 @@ def _console() -> Console:
     """
     global _CONSOLE
     if _CONSOLE is None:
-        _CONSOLE = Console(theme=_THEME, highlight=False)
+        _CONSOLE = Console(theme=_build_theme(), highlight=False)
     return _CONSOLE
 
 
 def _err_console() -> Console:
     global _ERR_CONSOLE
     if _ERR_CONSOLE is None:
-        _ERR_CONSOLE = Console(theme=_THEME, stderr=True, highlight=False)
+        _ERR_CONSOLE = Console(theme=_build_theme(), stderr=True, highlight=False)
     return _ERR_CONSOLE
 
 
