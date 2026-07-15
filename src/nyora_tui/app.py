@@ -1807,13 +1807,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def compose(self) -> ComposeResult:
             with Vertical(id="acct"):
                 if self._sync.is_signed_in:
-                    yield Static(f"Signed in as [$success]{self._sync.email}[/]")
-                    yield Static("[dim]Press enter to sign out, esc to close.[/]", id="acct_msg")
+                    email = f"[$success]{_esc(str(self._sync.email))}[/]"
+                    yield Static(t("account.signed_in_as", email=email))
+                    yield Static(f"[dim]{_esc(t('account.sign_out'))} · esc[/]", id="acct_msg")
                 else:
-                    yield Static("[b]Sign in to Nyora sync[/]")
-                    yield Input(placeholder="email", id="acct_email")
-                    yield Input(placeholder="password", password=True, id="acct_pw")
-                    yield Static("[dim]Enter to sign in, esc to cancel.[/]", id="acct_msg")
+                    yield Static(f"[b]{_esc(t('account.sign_in'))}[/]")
+                    yield Input(placeholder=t("welcome.email"), id="acct_email")
+                    yield Input(placeholder=t("welcome.password"), password=True, id="acct_pw")
+                    yield Static(f"[dim]{_esc(t('account.sign_in'))} · esc[/]", id="acct_msg")
 
         def on_mount(self) -> None:
             if not self._sync.is_signed_in:
