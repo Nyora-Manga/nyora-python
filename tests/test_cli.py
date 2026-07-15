@@ -261,7 +261,8 @@ def test_completion(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_rating_and_flags() -> None:
-    assert cli._rating(0.9) == "4.5★"
-    assert cli._rating(-1.0) == "—"
+    # _rating/_flags now return themed Rich markup; assert the payload, not exact styling.
+    assert "4.5★" in cli._rating(0.9)
+    assert "—" in cli._rating(-1.0)
     assert "18+" in cli._flags(nsfw=True)
     assert cli._flags() == ""

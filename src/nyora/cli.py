@@ -21,13 +21,46 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
+from rich import box
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
+from rich.theme import Theme
 
 from nyora.client import Nyora
 from nyora.errors import NyoraError
 from nyora.models import Manga, MangaDetails, MangaPage, SearchPage, Source
+
+# --------------------------------------------------------------------------- #
+# Visual identity — the "Sakura" palette, shared with the Nyora TUI so the CLI
+# and the terminal reader look like one product. Semantic style names (not raw
+# colours) are used in markup throughout, so a future re-theme is one edit here.
+# --------------------------------------------------------------------------- #
+_PINK = "#ff8fb1"        # sakura accent (readable on dark terminals)
+_ROSE = "#c9718a"        # deeper rose for borders / secondary chrome
+_THEME = Theme(
+    {
+        "nyora.brand": f"bold {_PINK}",
+        "nyora.title": f"bold {_PINK}",
+        "nyora.header": f"bold {_PINK}",
+        "nyora.border": _ROSE,
+        "nyora.muted": "grey58",
+        "nyora.index": "grey42",
+        "nyora.link": "#8fb8ff",       # soft blue for URLs
+        "nyora.rating": "#f6c177",      # amber stars
+        "nyora.lang": "#8fd6c0",        # teal language tags
+        "nyora.nsfw": "bold #ff6b6b",   # 18+ badge
+        "nyora.pin": "#f6c177",
+        "nyora.ok": "bold #a7e0a0",
+        "nyora.warn": "#f6c177",
+        "nyora.err": "bold #ff6b6b",
+        # Override Rich's defaults (table titles are italic by default) so our
+        # bold-pink titles render cleanly.
+        "table.title": "",
+        "table.caption": "dim",
+    }
+)
+_FLOWER = "❀"  # sakura mark used as a small brand flourish on titles
 
 #: User-Agent for direct image downloads (the helper rewrites cover/page
 #: hosts; a browser UA keeps CDNs happy).
@@ -328,8 +361,12 @@ def _cmd_pages(args: argparse.Namespace) -> int:
         if args.json:
             _print_json([asdict(page) for page in pages])
             return 0
+        console = _console()
+        console.print(
+            f"[nyora.brand]{_FLOWER}[/] [nyora.title]Pages[/] [nyora.muted]({len(pages)})[/]"
+        )
         for index, page in enumerate(pages, start=1):
-            _print(f"{index:>4}  {page.url}")
+            console.print(f"[nyora.index]{index:>4}[/]  [nyora.link]{escape(page.url)}[/]")
     return 0
 
 
@@ -349,7 +386,7 @@ def _cmd_download(args: argparse.Namespace) -> int:
     if args.json:
         _print_json({"file": str(cbz_path), "pages": saved, "total": total})
     else:
-        _print(f"Saved {saved}/{total} pages to {cbz_path}")
+        _say_saved(cbz_path, saved, total)
     return 0
 
 
@@ -365,7 +402,7 @@ def _cmd_open(args: argparse.Namespace) -> int:
     if saved == 0:
         _error("no pages could be downloaded")
         return 1
-    _print(f"Saved {saved}/{total} pages to {cbz_path}")
+    _say_saved(cbz_path, saved, total)
     _open_file(cbz_path)
     return 0
 
@@ -377,7 +414,7 @@ def _cmd_batch(args: argparse.Namespace) -> int:
     with Nyora() as nyora:
         source = nyora.sources.find(args.source)
         if not json_out:
-            _print("Fetching manga details...")
+            _say("[nyora.muted]fetching details…[/]")
         details = nyora.manga.details(source.id, args.manga_url)
         chapters = details.reading_order()
         if not chapters:
@@ -397,7 +434,10 @@ def _cmd_batch(args: argparse.Namespace) -> int:
         base_out_dir.mkdir(parents=True, exist_ok=True)
         total = len(chapters)
         if not json_out:
-            _print(f"Downloading {total} chapters as .cbz to {base_out_dir}")
+            _say(
+                f"[nyora.brand]{_FLOWER}[/] downloading [nyora.title]{total}[/] chapters → "
+                f"[nyora.link]{escape(str(base_out_dir))}[/]"
+            )
 
         downloaded: list[dict[str, Any]] = []
         total_pages = 0
@@ -437,7 +477,10 @@ def _cmd_batch(args: argparse.Namespace) -> int:
             }
         )
     else:
-        _print(f"Done — {len(downloaded)} archives, {total_pages} pages, in {base_out_dir}")
+        _say(
+            f"[nyora.ok]✓[/] {len(downloaded)} archives, {total_pages} pages → "
+            f"[nyora.link]{escape(str(base_out_dir))}[/]"
+        )
     return 0
 
 
@@ -505,7 +548,10 @@ def _cmd_grab(args: argparse.Namespace) -> int:
     if args.json:
         _print_json(result)
     elif downloaded:
-        _print(f"Grabbed {len(downloaded)} chapter(s) of {details.manga.title} → {out_dir}")
+        _say(
+            f"[nyora.ok]✓[/] grabbed [nyora.title]{len(downloaded)}[/] chapter(s) of "
+            f"[nyora.title]{escape(details.manga.title)}[/] → [nyora.link]{escape(str(out_dir))}[/]"
+        )
     else:
         _error("nothing downloaded")
     return 0 if downloaded else 1
@@ -529,7 +575,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
     if args.json:
         _print_json({"package": package_version})
         return 0
-    _print(f"nyora {package_version}")
+    _say(f"[nyora.brand]{_FLOWER} nyora[/] [nyora.muted]v[/]{package_version}")
     return 0
 
 
@@ -544,12 +590,15 @@ def _cmd_config(args: argparse.Namespace) -> int:
             _print("usage: nyora config set-url <URL>   (e.g. http://127.0.0.1:8788)")
             return 2
         set_config_base_url(args.value)
-        _print(f"server URL set to {args.value.rstrip('/')}")
-        _print(f"  saved in {config_file()}")
+        _say(f"[nyora.ok]✓[/] server URL set to [nyora.link]{escape(args.value.rstrip('/'))}[/]")
+        _say(f"  [nyora.muted]saved in {escape(str(config_file()))}[/]")
         return 0
     if action == "unset-url":
         set_config_base_url(None)
-        _print("server URL cleared — a bare `nyora` now auto-launches its own bundled engine.")
+        _say(
+            "[nyora.ok]✓[/] server URL cleared — a bare `nyora` now auto-launches its "
+            "bundled engine."
+        )
         return 0
     if action == "path":
         _print(str(config_file()))
@@ -565,11 +614,20 @@ def _cmd_config(args: argparse.Namespace) -> int:
             "self_contained": resolved is None,
         })
         return 0
-    _print(f"config file:   {config_file()}")
-    _print(f"configured:    {cfg.get('base_url') or '(none)'}")
-    _print(f"effective URL: {resolved or '(none) → auto-launches a local bundled engine'}")
-    _print("\nSet your own server:  nyora config set-url http://127.0.0.1:8788")
-    _print("Standalone server:    pipx install nyora-extension-server && nyora-extension-server")
+    console = _console()
+    effective = (
+        f"[nyora.link]{escape(resolved)}[/]"
+        if resolved
+        else "[nyora.muted](none) → auto-launches a local bundled engine[/]"
+    )
+    console.print(f"[nyora.muted]config file  [/] {escape(str(config_file()))}")
+    console.print(f"[nyora.muted]configured   [/] {escape(cfg.get('base_url') or '(none)')}")
+    console.print(f"[nyora.muted]effective URL[/] {effective}")
+    console.print("\n[nyora.muted]Set your own server:[/]  nyora config set-url http://127.0.0.1:8788")
+    console.print(
+        "[nyora.muted]Standalone server:  [/]  "
+        "pipx install nyora-extension-server && nyora-extension-server"
+    )
     return 0
 
 
@@ -578,12 +636,12 @@ def _cmd_upgrade(args: argparse.Namespace) -> int:
     import subprocess
     import sys
 
-    _print("Upgrading nyora to the latest release …")
+    _say(f"[nyora.brand]{_FLOWER}[/] upgrading nyora to the latest release …")
     result = subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "nyora"])
     if result.returncode == 0:
-        _print("Done. Run `nyora version` to confirm.")
+        _say("[nyora.ok]✓[/] done — run `nyora version` to confirm.")
         return 0
-    _print("Upgrade failed. Try manually:  pip install -U nyora   (pipx: pipx upgrade nyora)")
+    _error("upgrade failed. Try manually:  pip install -U nyora   (pipx: pipx upgrade nyora)")
     return 1
 
 
@@ -599,28 +657,42 @@ def _cmd_blocklist(args: argparse.Namespace) -> int:
     with Nyora() as nyora:
         base = getattr(nyora, "base_url", None)
         if action == "refresh":
-            _print(f"Probing sources on {base} to build the blocklist (a few minutes)…")
+            _say(
+                f"[nyora.brand]{_FLOWER}[/] probing sources on "
+                f"[nyora.link]{escape(str(base))}[/] (a few minutes)…"
+            )
 
             def _progress(done: int, total: int, dead: int) -> None:
                 if done == total or done % 25 == 0:
-                    print(f"  {done}/{total} probed · {dead} dead", file=sys.stderr, flush=True)
+                    _err_console().print(
+                        f"  [nyora.muted]{done}/{total} probed · {dead} dead[/]"
+                    )
 
             dead = generate_blocklist(nyora, on_progress=_progress)
-            _print(f"Done — {len(dead)} sources blocked. Cached at {blocklist_cache_file(base)}")
+            _say(
+                f"[nyora.ok]✓[/] {len(dead)} sources blocked "
+                f"[nyora.muted]· cached at {escape(str(blocklist_cache_file(base)))}[/]"
+            )
             return 0
         if action == "clear":
             path = blocklist_cache_file(base)
             if path.exists():
                 path.unlink()
-            _print(f"Cleared the generated blocklist for {base}.")
+            _say(
+                f"[nyora.ok]✓[/] cleared the generated blocklist for "
+                f"[nyora.link]{escape(str(base))}[/]"
+            )
             return 0
         cache = load_server_blocklist(base)
         if cache is None:
-            _print(f"No generated blocklist for {base}.")
-            _print("Build one:  nyora blocklist refresh")
+            _say(f"[nyora.muted]no generated blocklist for {escape(str(base))}[/]")
+            _say("[nyora.muted]build one:[/]  nyora blocklist refresh")
         else:
-            _print(f"{len(cache)} sources blocked for {base}")
-            _print(f"  cache: {blocklist_cache_file(base)}")
+            _say(
+                f"[nyora.title]{len(cache)}[/] sources blocked for "
+                f"[nyora.link]{escape(str(base))}[/]"
+            )
+            _say(f"  [nyora.muted]cache: {escape(str(blocklist_cache_file(base)))}[/]")
     return 0
 
 
@@ -694,10 +766,10 @@ def _download_with_progress(
     from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
     with Progress(
-        TextColumn("[cyan]{task.description}"),
-        BarColumn(),
+        TextColumn("[nyora.title]{task.description}"),
+        BarColumn(complete_style="nyora.border", finished_style="nyora.ok"),
         MofNCompleteColumn(),
-        TextColumn("pages"),
+        TextColumn("[nyora.muted]pages[/]"),
         console=_console(),
         transient=True,
     ) as progress:
@@ -706,7 +778,8 @@ def _download_with_progress(
             pages, cbz_path, on_progress=lambda done, total: progress.update(task, completed=done)
         )
     saved, total = result
-    _print(f"  {cbz_path.name}  ({saved}/{total} pages)")
+    tick = "nyora.ok" if saved == total else "nyora.warn"
+    _say(f"  [{tick}]•[/] {escape(cbz_path.name)}  [nyora.muted]({saved}/{total} pages)[/]")
     return result
 
 
@@ -830,68 +903,72 @@ def _dataclass_json(obj: Any) -> Any:
 
 
 def _rating(value: float) -> str:
-    """Render a normalized 0..1 rating as a five-star score, or ``—``."""
-    return f"{value * 5:.1f}★" if value is not None and value >= 0 else "—"
+    """Render a normalized 0..1 rating as an amber five-star score, or a dim ``—``."""
+    if value is not None and value >= 0:
+        return f"[nyora.rating]{value * 5:.1f}★[/]"
+    return "[nyora.muted]—[/]"
 
 
 def _flags(*, nsfw: bool = False, pinned: bool = False) -> str:
-    return ("[yellow]★[/]" if pinned else "") + ("[red]18+[/]" if nsfw else "")
+    return ("[nyora.pin]★[/] " if pinned else "") + ("[nyora.nsfw]18+[/]" if nsfw else "")
 
 
 def _render_sources(sources: list[Source]) -> None:
-    table = Table(title=f"Sources ({len(sources)})")
-    table.add_column("id", style="cyan", no_wrap=True)
+    table = _table("Sources", len(sources))
+    table.add_column("id", style="nyora.link", no_wrap=True)
     table.add_column("name")
-    table.add_column("lang", style="green")
+    table.add_column("lang", style="nyora.lang", justify="center")
     table.add_column("", justify="center")
     for src in sources:
+        # 18+ source names glow red so mature sources read at a glance.
+        name = f"[nyora.nsfw]{escape(src.name)}[/]" if src.is_nsfw else escape(src.name)
         table.add_row(
-            src.id, escape(src.name), src.lang, _flags(nsfw=src.is_nsfw, pinned=src.is_pinned)
+            src.id, name, src.lang, _flags(nsfw=src.is_nsfw, pinned=src.is_pinned)
         )
     _console().print(table)
 
 
 def _render_entries(entries: list[Manga], *, title: str, has_next: bool) -> None:
-    table = Table(title=f"{escape(title)} ({len(entries)})")
-    table.add_column("#", style="dim", justify="right")
+    table = _table(title, len(entries))
+    if has_next:
+        table.caption = "[nyora.muted]more pages available — pass -p/--page or --all[/]"
+        table.caption_justify = "left"
+    table.add_column("#", style="nyora.index", justify="right")
     table.add_column("title")
-    table.add_column("rating", justify="right", style="yellow")
+    table.add_column("rating", justify="right")
     table.add_column("", justify="center")
-    table.add_column("url", style="blue", no_wrap=False)
+    table.add_column("url", style="nyora.link", no_wrap=False)
     for index, manga in enumerate(entries, start=1):
         table.add_row(
             str(index), escape(manga.title), _rating(manga.rating),
             _flags(nsfw=manga.is_nsfw), escape(manga.url),
         )
-    console = _console()
-    console.print(table)
-    if has_next:
-        console.print("[dim]more pages available[/dim]")
+    _console().print(table)
 
 
 def _render_details(details: MangaDetails) -> None:
     manga = details.manga
     console = _console()
-    badge = "  [red]18+[/]" if manga.is_nsfw else ""
-    console.print(f"[bold]{escape(manga.title)}[/bold]{badge}")
+    badge = "  [nyora.nsfw]18+[/]" if manga.is_nsfw else ""
+    console.print(f"\n[nyora.brand]{_FLOWER}[/] [nyora.title]{escape(manga.title)}[/]{badge}")
     meta = []
     if manga.rating is not None and manga.rating >= 0:
-        meta.append(f"[dim]Rating:[/dim] {_rating(manga.rating)}")
+        meta.append(f"[nyora.muted]rating[/] {_rating(manga.rating)}")
     if manga.state:
-        meta.append(f"[dim]State:[/dim] {escape(manga.state)}")
+        meta.append(f"[nyora.muted]state[/] {escape(manga.state)}")
     if manga.authors:
-        meta.append(f"[dim]Authors:[/dim] {escape(', '.join(manga.authors))}")
+        meta.append(f"[nyora.muted]authors[/] {escape(', '.join(manga.authors))}")
     if meta:
         console.print("   ".join(meta))
     if manga.tags:
         tags = ", ".join(str(tag.get("title") or tag.get("name") or "") for tag in manga.tags)
-        console.print(f"[dim]Tags:[/dim] {escape(tags)}")
+        console.print(f"[nyora.muted]tags[/] {escape(tags)}")
     if manga.description:
         console.print(f"\n{escape(manga.description)}\n")
-    table = Table(title=f"Chapters ({len(details.chapters)})")
-    table.add_column("#", style="dim", justify="right")
+    table = _table("Chapters", len(details.chapters))
+    table.add_column("#", style="nyora.index", justify="right")
     table.add_column("title")
-    table.add_column("url", style="blue")
+    table.add_column("url", style="nyora.link")
     for index, chapter in enumerate(details.chapters, start=1):
         table.add_row(str(index), escape(chapter.title or chapter.id), escape(chapter.url))
     console.print(table)
@@ -902,20 +979,70 @@ def _render_details(details: MangaDetails) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _console() -> Any:
-    return Console()
+_CONSOLE: Console | None = None
+_ERR_CONSOLE: Console | None = None
+
+
+def _console() -> Console:
+    """The shared, Sakura-themed stdout console (created once).
+
+    ``highlight=False`` disables Rich's automatic repr/number/path colouring so
+    only our explicit palette shows — the CLI's look is fully intentional.
+    """
+    global _CONSOLE
+    if _CONSOLE is None:
+        _CONSOLE = Console(theme=_THEME, highlight=False)
+    return _CONSOLE
+
+
+def _err_console() -> Console:
+    global _ERR_CONSOLE
+    if _ERR_CONSOLE is None:
+        _ERR_CONSOLE = Console(theme=_THEME, stderr=True, highlight=False)
+    return _ERR_CONSOLE
+
+
+def _table(title: str, count: int | None = None) -> Table:
+    """A branded table: rounded rose border, sakura title, pink headers."""
+    heading = f"[nyora.brand]{_FLOWER}[/] [nyora.title]{escape(title)}[/]"
+    if count is not None:
+        heading += f" [nyora.muted]({count})[/]"
+    return Table(
+        title=heading,
+        title_justify="left",
+        box=box.ROUNDED,
+        border_style="nyora.border",
+        header_style="nyora.header",
+        pad_edge=False,
+        padding=(0, 1),
+    )
 
 
 def _print(message: str) -> None:
     print(message)
 
 
+def _say(markup: str) -> None:
+    """Print a styled status line through the themed console."""
+    _console().print(markup)
+
+
+def _say_saved(path: Path, saved: int, total: int) -> None:
+    """The shared 'saved N/M pages → path' success line."""
+    _say(
+        f"[nyora.ok]✓[/] saved [nyora.rating]{saved}[/]/{total} pages "
+        f"→ [nyora.link]{escape(str(path))}[/]"
+    )
+
+
 def _print_json(payload: Any) -> None:
+    # JSON is a data contract: emit it raw, never through the themed console
+    # (no colour codes, no soft-wrapping) so pipes and parsers stay clean.
     print(json.dumps(payload, indent=2, ensure_ascii=False))
 
 
 def _error(message: str) -> None:
-    print(f"error: {message}", file=sys.stderr)
+    _err_console().print(f"[nyora.err]✗[/] {escape(message)}")
 
 
 def _fail(args: argparse.Namespace, message: str) -> None:
