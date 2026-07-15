@@ -12,24 +12,19 @@ from nyora.models import (
     MangaPrefs,
     SearchPage,
 )
+from nyora.pagers import MangaPager
+from nyora.services._base import _Service
 
 if TYPE_CHECKING:
-    from nyora.client import Nyora
+    pass
 
 
-class MangaService:
+class MangaService(_Service):
     """Browse, search, read, and configure manga via the helper.
 
     Attached to a client as ``client.manga``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
 
     def popular(self, source_id: str, page: int = 1) -> SearchPage:
         """Fetch a page of popular manga from a source.
@@ -78,6 +73,66 @@ class MangaService:
         if filters:
             params["filters"] = filters
         return SearchPage.from_json(self._client.get("/sources/search", params=params))
+
+    def iter_popular(
+        self,
+        source_id: str,
+        *,
+        start_page: int = 1,
+        max_pages: int | None = None,
+        limit: int | None = None,
+    ) -> MangaPager:
+        """Auto-paging iterator over popular manga across all pages.
+
+        Args:
+            source_id: Identifier of the source to query.
+            start_page: First (1-based) page to fetch.
+            max_pages: Stop after this many pages (``None`` = until exhausted).
+            limit: Stop after yielding this many manga (``None`` = no cap).
+
+        Returns:
+            A :class:`~nyora.pagers.MangaPager` — iterate for :class:`~nyora.models.Manga`.
+        """
+        return MangaPager(
+            lambda page: self.popular(source_id, page),
+            start_page=start_page,
+            max_pages=max_pages,
+            limit=limit,
+        )
+
+    def iter_latest(
+        self,
+        source_id: str,
+        *,
+        start_page: int = 1,
+        max_pages: int | None = None,
+        limit: int | None = None,
+    ) -> MangaPager:
+        """Auto-paging iterator over the latest-updated manga across all pages."""
+        return MangaPager(
+            lambda page: self.latest(source_id, page),
+            start_page=start_page,
+            max_pages=max_pages,
+            limit=limit,
+        )
+
+    def iter_search(
+        self,
+        source_id: str,
+        query: str,
+        *,
+        start_page: int = 1,
+        max_pages: int | None = None,
+        limit: int | None = None,
+        filters: list[dict[str, Any]] | None = None,
+    ) -> MangaPager:
+        """Auto-paging iterator over search results across all pages."""
+        return MangaPager(
+            lambda page: self.search(source_id, query, page, filters=filters),
+            start_page=start_page,
+            max_pages=max_pages,
+            limit=limit,
+        )
 
     def global_search(self, query: str, *, limit_per_source: int = 8) -> list[GlobalSearchGroup]:
         """Search every installed source at once.

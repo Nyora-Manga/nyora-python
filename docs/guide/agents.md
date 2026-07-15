@@ -14,20 +14,19 @@ Almost everything you need is one import:
 from nyora import Nyora
 ```
 
-`Nyora` is a thin, typed HTTP client over the **Nyora cloud**
-(`https://api.hasanraza.tech`). It needs **no** local server and **no** Node
-process — a bare `Nyora()` connects to the cloud. Override the target with
-`Nyora(base_url=...)` or the `NYORA_BASE_URL` environment variable.
+`Nyora` is a self-contained, typed client. A bare `Nyora()` launches a **bundled
+local engine** — no cloud, no Node process (a JRE is auto-downloaded if needed).
+Point it at a server with `Nyora(base_url=...)`, `nyora config set-url`, or the
+`NYORA_BASE_URL` environment variable.
 
 Other useful re-exports from the top-level `nyora` package:
 
 | Import | What it is |
 | ------ | ---------- |
-| `from nyora import Nyora` | The default cloud client. |
+| `from nyora import Nyora` | The default client (bundled local engine). |
 | `from nyora import AsyncNyora` | The async read client. |
 | `from nyora import NyoraSync` | Cloud account + library sync (OAuth2/JWT). |
 | `from nyora import NyoraError` | Base SDK exception. |
-| `from nyora import CLOUD_BASE_URL` | The default cloud base URL string. |
 | `from nyora.models import Manga, MangaChapter, MangaPage, Source, SearchPage, MangaDetails` | Typed result dataclasses (all have `from_json`). |
 
 The client is a context manager — always close it (use `with`) so the HTTP
@@ -113,11 +112,34 @@ Key facts an agent should rely on:
 - `chapter.branch` selects a scanlation/translation; pass it through to
   `pages()` (it may be `None`).
 
+## Fastest path: one-shot `grab`
+
+Every `nyora-cli` call spawns a process and attaches the engine, so an agent
+should minimise round-trips. **`grab` collapses search → details → download into
+a single call** and emits a machine-readable manifest — prefer it whenever the
+goal is "get me chapter(s) of X":
+
+```python
+manifest = cli_json("grab", "-s", "mangadex", "berserk", "-c", "1", "-o", "./out")
+# {
+#   "source": "mangadex",
+#   "manga": {"title": "Berserk", "url": "/title/..."},
+#   "out_dir": "./out",
+#   "downloaded": [{"chapter": "Chapter 1", "file": "out/Chapter_1.cbz",
+#                   "pages": 42, "total": 42}]
+# }
+```
+
+Chapter selection: `-c N` (Nth chapter in reading order, default 1),
+`--range A-B` (e.g. `1-10`, `5-`, `-3`), or `--all`. The first search match is
+used. Downloads are concurrent; pages are written in reading order.
+
 ## Driving `nyora-cli --json` and parsing it
 
-When you can only shell out, every read command supports `--json` (global flag,
-**before** the subcommand). Output goes to stdout; errors go to stderr with a
-non-zero exit code.
+When you need finer control, every read command supports `--json` (global flag,
+**before** the subcommand). Output goes to stdout. With `--json`, **errors are
+structured too** — a failure prints `{"error": "<message>"}` to stdout and exits
+non-zero, so you can parse success and failure the same way.
 
 ```python
 import json
@@ -125,14 +147,16 @@ import subprocess
 
 
 def cli_json(*args: str):
-    """Run `nyora-cli --json <args>` and return the parsed JSON."""
-    proc = subprocess.run(
-        ["nyora-cli", "--json", *args],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return json.loads(proc.stdout)
+    """Run `nyora-cli --json <args>` and return the parsed JSON.
+
+    On failure the CLI prints `{"error": ...}` and exits non-zero, so we surface
+    it as an exception the agent can catch.
+    """
+    proc = subprocess.run(["nyora-cli", "--json", *args], capture_output=True, text=True)
+    data = json.loads(proc.stdout) if proc.stdout.strip() else {}
+    if isinstance(data, dict) and "error" in data:
+        raise RuntimeError(data["error"])
+    return data
 
 
 sources = cli_json("sources")                              # list[dict]
@@ -151,13 +175,14 @@ JSON shapes by command:
 
 | Command | JSON shape |
 | ------- | ---------- |
+| `grab` / `batch` | `{"source": str, "manga": {"title", "url"}, "out_dir": str, "downloaded": [{"chapter", "file", "pages", "total"}]}`. `grab` searches by query; `batch` takes a manga URL. |
 | `sources` | array of `Source` objects (snake_case fields). |
-| `search` / `popular` / `latest` | `SearchPage`: `{"entries": [Manga...], "has_next_page": bool}`. |
+| `search` / `popular` / `latest` | `SearchPage`: `{"entries": [Manga...], "has_next_page": bool}`. Add `-n N`/`--all` to auto-paginate. |
 | `details` | `MangaDetails`: `{"manga": Manga, "chapters": [MangaChapter...]}`. |
 | `pages` | array of `MangaPage`: `[{"url": str, "headers": {...}}]`. |
 | `download` | `{"file": str, "pages": int, "total": int}` — the saved `.cbz` path plus the fetched/total page counts. |
-| `batch` | prints human-readable progress (no JSON payload). |
 | `version` | `{"package": str}`. |
+| _any failure_ | `{"error": str}` on stdout, non-zero exit. |
 
 ```{tip}
 For shell scripting, pipe into `jq`. Note `--json` must precede the subcommand:
@@ -167,7 +192,7 @@ For shell scripting, pipe into `jq`. Note `--json` must precede the subcommand:
 ## Syncing a user's library
 
 To read or write a signed-in user's library, use {py:class}`nyora.sync.NyoraSync`
-(OAuth2 password grant + JWT against `https://stream.hasanraza.tech`). Tokens
+(OAuth2 password grant + JWT against `https://sync.nyora.xyz`). Tokens
 persist to `~/.config/nyora/sync.json`, so a process stays signed in across runs.
 
 ```python
@@ -218,8 +243,9 @@ Guidance for agents:
   and `.body`.
 - {py:class}`nyora.sync.NotSignedInError` is raised if you call `upsert`/`select`
   before signing in.
-- The CLI maps `NyoraError`/`LookupError` to exit code `1` (message on stderr),
-  argparse usage errors to `2`, and `Ctrl+C` to `130`.
+- The CLI maps `NyoraError`/`LookupError` to exit code `1`, argparse usage errors
+  to `2`, and `Ctrl+C` to `130`. With `--json`, failures print
+  `{"error": "<message>"}` to stdout (plain text to stderr otherwise).
 
 ## Cheat sheet — intent → SDK call → CLI command
 
@@ -228,6 +254,7 @@ Assume `client = Nyora()` (use it as a context manager). All `page` args are
 
 | Intent | SDK call | CLI command |
 | ------ | -------- | ----------- |
+| **Search + download in one call** | (search → details → download) | **`nyora-cli --json grab -s SRC "query" -c 1 -o OUT`** |
 | List all sources | `client.sources.list()` | `nyora-cli --json sources` |
 | Find a source (fuzzy) | `client.sources.find("dex")` | `nyora-cli sources --search dex` |
 | Popular manga | `client.manga.popular(sid, page=1)` | `nyora-cli --json popular -s SRC -p 1` |

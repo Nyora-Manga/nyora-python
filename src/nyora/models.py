@@ -1,7 +1,7 @@
 """Typed data models for the Nyora SDK.
 
 Lightweight, slotted dataclasses that mirror the JSON returned by the Nyora
-cloud helper REST API. Every model exposes a tolerant ``from_json`` classmethod
+helper REST API. Every model exposes a tolerant ``from_json`` classmethod
 that accepts the raw camelCase payloads and coerces field types defensively, so
 missing or malformed fields fall back to sensible defaults rather than raising.
 These types are returned throughout :class:`nyora.Nyora` and the service

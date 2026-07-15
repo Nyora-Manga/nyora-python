@@ -18,6 +18,18 @@ class HelperLaunchError(NyoraError):
     """Raised when a managed helper process fails to start."""
 
 
+class NyoraTransportError(NyoraError):
+    """Base for network/transport failures reaching the engine (after retries)."""
+
+
+class NyoraTimeoutError(NyoraTransportError):
+    """Raised when a request exceeds its timeout, and retries are exhausted."""
+
+
+class NyoraConnectionError(NyoraTransportError):
+    """Raised when the engine is unreachable, and retries are exhausted."""
+
+
 class NyoraHTTPError(NyoraError):
     """Raised when the helper returns a non-successful HTTP response.
 

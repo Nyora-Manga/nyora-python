@@ -14,24 +14,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from nyora.models import BackupImportResult, Stats
+from nyora.services._base import _Service
 
 if TYPE_CHECKING:
     from nyora.client import Nyora
 
 
-class BackupService:
+class BackupService(_Service):
     """Export and import the helper's library backup.
 
     Attached to a client as ``client.backup``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
 
     def export(self) -> Any:
         """Export the full backup archive.
@@ -54,19 +48,12 @@ class BackupService:
         return BackupImportResult.from_json(data)
 
 
-class LocalService:
+class LocalService(_Service):
     """Scan and read locally stored manga files.
 
     Reachable as ``client.system.local``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
 
     def scan(self, folder: str) -> list[dict[str, Any]]:
         """Scan a folder for local manga archives.
@@ -91,19 +78,12 @@ class LocalService:
         return self._client.get("/local/chapter", params={"cbz": cbz})
 
 
-class TrackerService:
+class TrackerService(_Service):
     """Progress-tracking integrations (AniList).
 
     Reachable as ``client.system.tracker``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
 
     def anilist_search(self, query: str) -> dict[str, Any]:
         """Search AniList for a media entry.
@@ -133,7 +113,7 @@ class TrackerService:
         )
 
 
-class SystemService:
+class SystemService(_Service):
     """System-level operations: stats, settings, OTA, and sub-services.
 
     Attached to a client as ``client.system``. Composes
@@ -148,12 +128,7 @@ class SystemService:
     """
 
     def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client and build sub-services.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
+        super().__init__(client)
         self.local = LocalService(client)
         self.tracker = TrackerService(client)
 

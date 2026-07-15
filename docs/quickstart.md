@@ -18,16 +18,16 @@ Nyora requires **Python 3.10 or newer**.
 pip install nyora
 ```
 
-That is all you need. The default client is a thin HTTP client over the **Nyora
-cloud** ([`https://api.hasanraza.tech`](https://api.hasanraza.tech)), so there
-is **nothing else to run** — no local server and no Node process. HTTP is
-handled by `httpx`, which is pulled in automatically.
+That is all you need. The default client **bundles the Nyora parser engine and
+launches it locally**, so there is **nothing else to run** — no server and no
+Node process (a JRE is auto-downloaded if you have no Java). HTTP is handled by
+`httpx`, which is pulled in automatically.
 
 ## The default client: `nyora.Nyora`
 
-`nyora.Nyora` is the default client. By default it targets the Nyora cloud, so a
-bare `Nyora()` just works. Use it as a context manager so the HTTP connection is
-released cleanly:
+`nyora.Nyora` is the default client. A bare `Nyora()` auto-launches a bundled
+local engine, so it just works. Use it as a context manager so the HTTP
+connection (and the managed engine) are released cleanly:
 
 ```python
 from nyora import Nyora
@@ -44,9 +44,9 @@ are:
 
 ```{tip}
 `Nyora()` resolves its base URL in order: an explicit `base_url` argument, the
-`NYORA_BASE_URL` environment variable, a running local helper's port file, and
-finally the public cloud (`nyora.CLOUD_BASE_URL`). Pass `Nyora(base_url=...)` to
-point at a different deployment.
+`NYORA_BASE_URL` environment variable, the saved `nyora config set-url`, a
+running local helper's port file, and finally a **bundled engine it launches
+itself**. Pass `Nyora(base_url=...)` to point at a server.
 ```
 
 ## List sources

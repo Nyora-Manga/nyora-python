@@ -7,29 +7,27 @@ from typing import TYPE_CHECKING, Any, cast
 
 from nyora.blocked_sources import is_blocked_source
 from nyora.models import Source, SourceFilter
+from nyora.services._base import _Service
 
 if TYPE_CHECKING:
-    from nyora.client import Nyora
+    pass
 
 
-def _keep(sources: builtins.list[Source]) -> builtins.list[Source]:
-    """Drop dead / Cloudflare-walled sources from a catalog listing."""
-    return [s for s in sources if not is_blocked_source(s.id)]
+def _keep(sources: builtins.list[Source], base_url: str | None) -> builtins.list[Source]:
+    """Drop dead / Cloudflare-walled sources (per-server blocklist aware)."""
+    return [s for s in sources if not is_blocked_source(s.id, base_url)]
 
 
-class SourcesService:
+class SourcesService(_Service):
     """Browse, manage, and inspect the helper's content sources.
 
     Attached to a client as ``client.sources``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
 
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
+    def _base_url(self) -> str | None:
+        """Return the owning client's base URL, when available."""
+        return getattr(self._client, "base_url", None)
 
     def list(self) -> builtins.list[Source]:
         """List the installed sources.
@@ -38,7 +36,8 @@ class SourcesService:
             The installed :class:`~nyora.models.Source` records.
         """
         data = cast(dict[str, Any], self._client.get("/sources"))
-        return _keep([Source.from_json(item) for item in data.get("sources", data.get("entries", []))])
+        entries = data.get("sources", data.get("entries", []))
+        return _keep([Source.from_json(item) for item in entries], self._base_url())
 
     def catalog(self) -> builtins.list[Source]:
         """List every source available in the catalog (installed or not).
@@ -47,7 +46,8 @@ class SourcesService:
             All catalog :class:`~nyora.models.Source` records.
         """
         data = cast(dict[str, Any], self._client.get("/sources/catalog"))
-        return _keep([Source.from_json(item) for item in data.get("entries", [])])
+        entries = data.get("entries", [])
+        return _keep([Source.from_json(item) for item in entries], self._base_url())
 
     def refresh(self) -> builtins.list[Source]:
         """Refresh the source catalog from the remote feed.
@@ -56,7 +56,8 @@ class SourcesService:
             The refreshed list of :class:`~nyora.models.Source` records.
         """
         data = cast(dict[str, Any], self._client.post("/sources/refresh"))
-        return _keep([Source.from_json(item) for item in data.get("sources", data.get("entries", []))])
+        entries = data.get("sources", data.get("entries", []))
+        return _keep([Source.from_json(item) for item in entries], self._base_url())
 
     def install(self, source_id: str) -> Source | dict[str, Any]:
         """Install a source by id.

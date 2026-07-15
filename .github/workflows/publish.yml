@@ -3,7 +3,7 @@ name: Publish to PyPI
 # Publishes the `nyora` package to PyPI on a version tag (or manual dispatch),
 # using PyPI Trusted Publishing (OIDC) — no API token or password stored.
 # PyPI must have a trusted publisher configured for:
-#   owner: Hasan72341 · repo: nyora-python · workflow: publish.yml · environment: release
+#   owner: Nyora-Manga · repo: nyora-python · workflow: publish.yml · environment: release
 
 on:
   push:

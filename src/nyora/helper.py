@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -44,23 +45,46 @@ class HelperProcess:
         """Configure the managed helper.
 
         Args:
-            jar_path: Path to the helper jar. When ``None`` it is read from the
-                ``NYORA_HELPER_JAR`` environment variable.
-            java: The ``java`` executable to invoke.
+            jar_path: Path to the helper jar. When ``None`` it is read from
+                ``NYORA_HELPER_JAR``, else the parser engine **bundled with
+                ``nyora-extension-server``** (so the SDK is self-contained).
+            java: The ``java`` executable to invoke. ``None``/``"java"`` auto-detects.
             port_file: Override path for the helper port file. Defaults to
                 :func:`nyora.config.default_port_file`.
             timeout: Seconds to wait for the helper to become healthy.
 
         Raises:
-            HelperNotFoundError: If no jar path is provided or discoverable.
+            HelperNotFoundError: If no jar can be found (no bundled engine, no
+                ``NYORA_HELPER_JAR``, no ``jar_path``) or no Java runtime is found.
         """
         configured = jar_path or os.getenv(HELPER_JAR_ENV)
         if not configured:
+            try:  # the bundled engine ships with nyora-extension-server
+                from nyora_extension_server import bundled_jar
+
+                configured = str(bundled_jar())
+            except Exception:
+                configured = None
+        if not configured:
             raise HelperNotFoundError(
-                "Missing helper jar. Pass jar_path=... or set NYORA_HELPER_JAR."
+                "No parser engine found. Install `nyora-extension-server` (bundles the "
+                "engine), pass jar_path=..., or set NYORA_HELPER_JAR."
             )
         self.jar_path = Path(configured).expanduser().resolve()
-        self.java = java
+        java_bin = java
+        if not java_bin or java_bin == "java":
+            try:
+                # Prefer a usable system java; otherwise auto-download a JRE
+                # (one-time) so the SDK works with no Java installed — this is
+                # what makes a bare ``Nyora()`` "just work" on Windows too.
+                from nyora_extension_server import ensure_java
+
+                java_bin = ensure_java(
+                    log=lambda *a: print(*a, file=sys.stderr, flush=True)
+                )
+            except Exception:
+                java_bin = java or "java"
+        self.java = java_bin
         self.port_file = Path(port_file).expanduser() if port_file else default_port_file()
         self.timeout = timeout
         self.process: subprocess.Popen[str] | None = None

@@ -1,9 +1,11 @@
 """Nyora cloud sync — account + library sync against the self-hosted sync server.
 
-:class:`NyoraSync` talks to the Nyora sync server (``https://stream.hasanraza.tech``)
-using an OAuth2 password flow + JWT, then a generic last-write-wins upsert/select
-over the per-user tables (``nyora_manga``, ``nyora_favourite``, tracking, …). It
-mirrors the iOS ``NyoraSyncClient`` and replaces the old Supabase-based sync.
+:class:`NyoraSync` talks to the Nyora sync server (``https://sync.nyora.xyz``)
+using an OAuth2 password flow + JWT. It offers a generic last-write-wins
+``upsert``/``select`` transport, plus high-level ``favourite``/``history``
+helpers that build rows through :mod:`nyora.schema` so they stay
+field-compatible with the nyora-web sync client. Row shapes are the single
+source of truth in :mod:`nyora.schema`.
 
 Tokens are held in memory and, when a ``token_path`` is given, persisted to disk
 so a process can stay signed in across runs.
@@ -18,7 +20,9 @@ from typing import Any
 
 import httpx
 
-DEFAULT_SYNC_URL = "https://stream.hasanraza.tech"
+from nyora import schema
+
+DEFAULT_SYNC_URL = "https://sync.nyora.xyz"
 
 
 def _default_token_path() -> Path:
@@ -30,10 +34,14 @@ class NyoraSync:
     """Account and library sync against the Nyora sync server.
 
     Example:
+        >>> from nyora import Nyora
         >>> sync = NyoraSync()
         >>> sync.sign_in("me@example.com", "hunter2")
-        >>> sync.upsert("nyora_manga", [{"key": "...", "source": "...", "title": "..."}])
-        >>> rows = sync.select("nyora_manga")
+        >>> with Nyora() as client:
+        ...     manga = client.manga.popular("mangadex").entries[0]
+        ...     sync.favourite("mangadex", manga)     # schema-correct upserts
+        >>> [row["title"] for row in sync.favourites()]
+        ['...']
     """
 
     def __init__(
@@ -46,7 +54,7 @@ class NyoraSync:
         """Create a sync client.
 
         Args:
-            base_url: Sync server base URL. Defaults to ``https://stream.hasanraza.tech``
+            base_url: Sync server base URL. Defaults to ``https://sync.nyora.xyz``
                 (or the ``NYORA_SYNC_URL`` env var).
             timeout: Per-request HTTP timeout in seconds.
             token_path: Where to persist tokens. ``None`` uses the default user
@@ -87,7 +95,11 @@ class NyoraSync:
             self._token_path.parent.mkdir(parents=True, exist_ok=True)
             self._token_path.write_text(
                 json.dumps(
-                    {"access_token": self._access, "refresh_token": self._refresh, "email": self.email}
+                    {
+                        "access_token": self._access,
+                        "refresh_token": self._refresh,
+                        "email": self.email,
+                    }
                 )
             )
         except OSError:
@@ -102,6 +114,8 @@ class NyoraSync:
 
     def register(self, email: str, password: str) -> None:
         """Register a new account (server may have registration disabled)."""
+        # Register is a plain JSON endpoint (not the OAuth token endpoint) and
+        # returns the same token pair on success, so the caller is signed in too.
         res = self._http.post("/auth/register", json={"email": email, "password": password})
         res.raise_for_status()
         self.email = email.lower().strip()
@@ -133,6 +147,8 @@ class NyoraSync:
         self._store(tokens)
 
     def _token_form(self, fields: dict[str, str]) -> dict[str, Any]:
+        # OAuth2 token endpoint wants form-encoded (`data=`), not JSON — this
+        # backs both the password grant and the refresh grant.
         res = self._http.post("/auth/token", data=fields)
         res.raise_for_status()
         return res.json()
@@ -147,6 +163,8 @@ class NyoraSync:
             json=payload,
             headers={"Authorization": f"Bearer {self._access}"},
         )
+        # A 401 usually means the access token expired; refresh once and retry.
+        # `retry=False` on the recursion bounds it to a single refresh attempt.
         if res.status_code == 401 and retry and self._refresh:
             self._refresh_tokens()
             return self._sync(payload, retry=False)
@@ -166,9 +184,74 @@ class NyoraSync:
             payload["since"] = since
         return list(self._sync(payload).get("data", []))
 
-    def delete_extension_repo(self, type: str, base_url: str) -> None:
-        """Hard-delete one extension-repo row for the signed-in user."""
-        self._sync({"action": "deleteExtensionRepo", "type": type, "base_url": base_url})
+    # -- high-level library (rows built via nyora.schema) ----------------------
+    #
+    # Favourites and history reference a manga by id but carry no metadata of
+    # their own, so every write pushes the manga row first (``_push_manga``).
+    # That keeps the join in ``favourites()``/``history()`` populated even if the
+    # manga was never favourited from another device.
+
+    def _push_manga(self, source_id: str, manga: Any) -> str:
+        """Upsert a ``nyora_manga`` row for ``manga``; return its id."""
+        row = schema.manga_row(source_id, manga)
+        self.upsert(schema.TABLE_MANGA, [row])
+        return str(row["id"])
+
+    def favourite(self, source_id: str, manga: Any) -> str:
+        """Add ``manga`` to the cloud library (manga + favourite rows). Returns the id."""
+        manga_id = self._push_manga(source_id, manga)
+        self.upsert(schema.TABLE_FAVOURITE, [schema.favourite_row(manga_id)])
+        return manga_id
+
+    def unfavourite(self, manga_id: str) -> None:
+        """Soft-delete a favourite (last-write-wins tombstone)."""
+        self.upsert(schema.TABLE_FAVOURITE, [schema.favourite_row(manga_id, deleted=True)])
+
+    def favourites(self) -> list[dict[str, Any]]:
+        """Return live favourites joined with their manga metadata (friendly view)."""
+        favs = [f for f in self.select(schema.TABLE_FAVOURITE) if not f.get("deleted_at")]
+        manga = {m.get("id"): m for m in self.select(schema.TABLE_MANGA)}
+        return [schema.manga_view(f.get("manga_id", ""), manga.get(f.get("manga_id", ""), {}))
+                for f in favs]
+
+    def record_history(
+        self,
+        source_id: str,
+        manga: Any,
+        chapter: Any,
+        *,
+        page: int = 0,
+        total: int = 0,
+        percent: float = 0.0,
+    ) -> str:
+        """Record reading progress for a chapter (manga + history rows)."""
+        manga_id = self._push_manga(source_id, manga)
+        row = schema.history_row(
+            source_id, manga_id, chapter, page=page, total=total, percent=percent
+        )
+        self.upsert(schema.TABLE_HISTORY, [row])
+        return manga_id
+
+    def history(self) -> list[dict[str, Any]]:
+        """Return reading history (newest first) joined with manga metadata."""
+        rows = [h for h in self.select(schema.TABLE_HISTORY) if not h.get("deleted_at")]
+        rows.sort(key=lambda h: str(h.get("updated_at", "")), reverse=True)
+        manga = {m.get("id"): m for m in self.select(schema.TABLE_MANGA)}
+        out: list[dict[str, Any]] = []
+        for h in rows:
+            view = schema.manga_view(h.get("manga_id", ""), manga.get(h.get("manga_id", ""), {}))
+            view.update(
+                {
+                    "source": view["source"] or h.get("source_id", ""),
+                    "chapter_id": h.get("chapter_id", ""),
+                    "chapter_title": h.get("chapter_title", ""),
+                    "page": h.get("page", 0),
+                    "percent": float(h.get("percent", 0.0) or 0.0),
+                    "updated_at": h.get("updated_at", ""),
+                }
+            )
+            out.append(view)
+        return out
 
     # -- lifecycle -------------------------------------------------------------
 

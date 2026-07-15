@@ -6,24 +6,18 @@ import builtins
 from typing import TYPE_CHECKING, Any, cast
 
 from nyora.models import Download, DownloadSettings
+from nyora.services._base import _Service
 
 if TYPE_CHECKING:
-    from nyora.client import Nyora
+    pass
 
 
-class DownloadsService:
+class DownloadsService(_Service):
     """Start, enqueue, monitor, and configure chapter downloads.
 
     Attached to a client as ``client.downloads``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
 
     def list(self) -> builtins.list[Download]:
         """List current download tasks.

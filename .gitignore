@@ -13,6 +13,7 @@ node_modules/
 
 # Local download output / scratch experiments (not part of the package)
 nyora-download/
+/imgtest.py
 /rewrite_tui.py
 /test_pipeline.py
 /test_image.py

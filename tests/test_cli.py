@@ -55,6 +55,21 @@ class FakeManga:
     ) -> list[MangaPage]:
         return [MangaPage.from_json(dict(SAMPLE_PAGE_RAW))]
 
+    def iter_popular(self, source_id: str, *, limit: int | None = None, **_: Any) -> Any:
+        from nyora.pagers import MangaPager
+
+        return MangaPager(lambda page: self.popular(source_id, page), limit=limit)
+
+    def iter_latest(self, source_id: str, *, limit: int | None = None, **_: Any) -> Any:
+        from nyora.pagers import MangaPager
+
+        return MangaPager(lambda page: self.latest(source_id, page), limit=limit)
+
+    def iter_search(self, source_id: str, query: str, *, limit: int | None = None, **_: Any) -> Any:
+        from nyora.pagers import MangaPager
+
+        return MangaPager(lambda page: self.search(source_id, query, page), limit=limit)
+
 
 class FakeNyora:
     instances: int = 0
@@ -160,3 +175,93 @@ def test_bare_invocation_none_return_is_zero(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(tui_app, "main", lambda *a, **k: None)
 
     assert cli.main([]) == 0
+
+
+def test_popular_limit_autopaginates(capsys: pytest.CaptureFixture[str]) -> None:
+    rc = cli.main(["popular", "-s", "mangadex", "--limit", "5"])
+    assert rc == 0
+    assert "Test Manga" in capsys.readouterr().out
+
+
+def test_search_all_json(capsys: pytest.CaptureFixture[str]) -> None:
+    rc = cli.main(["--json", "search", "-s", "mangadex", "naruto", "--all"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "entries" in payload and payload["has_next_page"] is False
+
+
+def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--version"])
+    assert exc.value.code == 0
+    assert "nyora" in capsys.readouterr().out
+
+
+def test_apply_range() -> None:
+    chapters = list(range(10))
+    assert cli._apply_range(chapters, "1-3") == [0, 1, 2]
+    assert cli._apply_range(chapters, "5-") == [4, 5, 6, 7, 8, 9]
+    assert cli._apply_range(chapters, "-3") == [0, 1, 2]
+    with pytest.raises(ValueError):
+        cli._apply_range(chapters, "abc")
+    with pytest.raises(ValueError):
+        cli._apply_range(chapters, "1-x")
+
+
+def _raise(exc: Exception) -> Any:
+    def _f(*_a: Any, **_k: Any) -> Any:
+        raise exc
+
+    return _f
+
+
+def test_grab_json_manifest(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Avoid real downloads: stub the CBZ writer.
+    monkeypatch.setattr(cli, "_download_with_progress", lambda pages, path, **_k: (len(pages), 1))
+    rc = cli.main(["--json", "grab", "-s", "mangadex", "berserk"])
+    assert rc == 0
+    manifest = json.loads(capsys.readouterr().out)
+    assert manifest["source"] == "mangadex"
+    assert manifest["manga"]["title"] == "Test Manga"
+    assert len(manifest["downloaded"]) == 1
+    assert manifest["downloaded"][0]["pages"] == 1
+
+
+def test_batch_json_manifest(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # --json batch must emit only the manifest — no "Fetching…"/"Done…" chatter
+    # or progress bars leaking onto stdout (they would corrupt the JSON).
+    monkeypatch.setattr(cli, "_download_with_progress", lambda pages, path, **_k: (len(pages), 1))
+    rc = cli.main(["--json", "batch", "-s", "mangadex", "-o", "out", "/m/1"])
+    assert rc == 0
+    manifest = json.loads(capsys.readouterr().out)  # parses => nothing else on stdout
+    assert manifest["source"] == "mangadex"
+    assert manifest["out_dir"] == "out"
+    assert manifest["downloaded"][0]["pages"] == 1
+
+
+def test_json_error_is_structured(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from nyora.errors import NyoraError
+
+    monkeypatch.setattr(FakeManga, "search", _raise(NyoraError("engine down")))
+    rc = cli.main(["--json", "search", "-s", "mangadex", "q"])
+    assert rc == 1
+    assert json.loads(capsys.readouterr().out) == {"error": "engine down"}
+
+
+def test_completion(capsys: pytest.CaptureFixture[str]) -> None:
+    rc = cli.main(["completion", "bash"])
+    assert rc == 0
+    assert "register-python-argcomplete" in capsys.readouterr().out
+
+
+def test_rating_and_flags() -> None:
+    assert cli._rating(0.9) == "4.5★"
+    assert cli._rating(-1.0) == "—"
+    assert "18+" in cli._flags(nsfw=True)
+    assert cli._flags() == ""

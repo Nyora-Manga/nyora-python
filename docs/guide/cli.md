@@ -24,21 +24,29 @@ To script Nyora instead, always pass a subcommand
 
 ## Installation
 
-The CLI is installed with the package. `rich` and `textual` are core
-dependencies, so pretty tables and the TUI work out of the box:
+A single install ships the **full experience** — Rich colour tables, the
+interactive TUI, terminal-image rendering, and shell completion are all core:
 
 ```bash
 pip install nyora
 ```
 
+(The `[tui]` and `[completion]` extras still exist as no-op aliases, so older
+`pip install "nyora[tui]"` commands keep working.)
+
 Three equivalent entry points are installed (`nyora`, `nyora-cli`,
 `nyora-tui`). `nyora` and `nyora-cli` are the same program (`nyora.cli:main`);
 `nyora-tui` launches the TUI directly. This page uses `nyora-cli` throughout.
 
-Every subcommand talks to the **Nyora cloud**
-([`https://api.hasanraza.tech`](https://api.hasanraza.tech)) by default, so
-there is nothing else to run. Point at a different deployment by setting the
+Every subcommand runs against a bundled local engine by default, so there is
+nothing else to run. Point at a server with `nyora config set-url` or the
 `NYORA_BASE_URL` environment variable.
+
+**Shell completion** is powered by `argcomplete` (bundled). Enable it with:
+
+```bash
+nyora-cli completion            # prints the setup line for your shell
+```
 
 ## Synopsis
 
@@ -46,6 +54,7 @@ there is nothing else to run. Point at a different deployment by setting the
 nyora-cli [--json] <command> [options]
 nyora-cli                       # no command -> launches the TUI
 nyora-cli --help                # lists all commands
+nyora-cli -V | --version        # print version and exit
 ```
 
 `--json` is a **global** flag and must appear *before* the subcommand:
@@ -56,19 +65,21 @@ nyora-cli sources --json          # WRONG: unknown option to `sources`
 ```
 
 The commands are: `sources`, `search`, `popular`, `latest`, `details`, `pages`,
-`download`, `batch`, and `version`.
+`download`, `open`, `batch`, `config`, `upgrade`, `blocklist`, `completion`,
+and `version`.
 
 ## Global options
 
 | Option | Effect |
 | ------ | ------ |
 | `--json` | Emit raw JSON to stdout instead of pretty tables/text. Must come before the subcommand. |
+| `-V`, `--version` | Print `nyora <version>` and exit. |
 | `-h`, `--help` | Show help and exit. Works on the program and on each subcommand. |
 
 ### `-s` / `--source` fuzzy resolution
 
 Every command that targets a source (`search`, `popular`, `latest`, `details`,
-`pages`, `download`, `batch`) takes a required `-s SRC` / `--source SRC`. `SRC`
+`pages`, `download`, `open`, `batch`) takes a required `-s SRC` / `--source SRC`. `SRC`
 is matched **case-insensitively** as a substring against each source's `id`
 **and** `name`, and the **first** match wins (sources are taken in catalog
 order). So `-s mangadex`, `-s MangaDex`, and `-s dex` typically all resolve to
@@ -81,7 +92,7 @@ To see the exact ids and names available, run `nyora-cli sources`.
 
 ## `sources` — list or search available sources
 
-List the sources available from the Nyora cloud, optionally filtered.
+List the sources available from the engine, optionally filtered.
 
 ```text
 nyora-cli [--json] sources [--search Q]
@@ -99,12 +110,15 @@ nyora-cli sources --search dex
 
 ```text
                 Sources (1)
-┏━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━┓
-┃ id       ┃ name     ┃ lang ┃
-┡━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━┩
-│ mangadex │ MangaDex │ en   │
-└──────────┴──────────┴──────┘
+┏━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━┳━━━┓
+┃ id       ┃ name     ┃ lang ┃   ┃
+┡━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━╇━━━┩
+│ mangadex │ MangaDex │ en   │   │
+└──────────┴──────────┴──────┴───┘
 ```
+
+The last column shows flags: `★` for a pinned source and `18+` for an adult
+source.
 
 **JSON** (`nyora-cli --json sources`) emits an array of full source objects
 (`asdict` of each {py:class}`~nyora.models.Source`):
@@ -135,13 +149,15 @@ nyora-cli sources --search dex
 ## `search` — search a source
 
 ```text
-nyora-cli [--json] search -s SRC [-p PAGE] QUERY
+nyora-cli [--json] search -s SRC [-p PAGE] [-n LIMIT | --all] QUERY
 ```
 
 | Arg / flag | Required | Default | Description |
 | ---------- | -------- | ------- | ----------- |
 | `-s`, `--source SRC` | **yes** | — | Source id or fuzzy name (see above). |
-| `-p`, `--page PAGE` | no | `1` | One-based page number. |
+| `-p`, `--page PAGE` | no | `1` | One-based page number (ignored when `-n`/`--all` is set). |
+| `-n`, `--limit N` | no | (off) | Auto-paginate and collect up to **N** results across pages. |
+| `--all` | no | (off) | Auto-paginate and collect **every** result across all pages. |
 | `QUERY` | **yes** | — | Free-text search query (positional). |
 
 **Example**
@@ -151,35 +167,50 @@ nyora-cli search -s mangadex "berserk"
 ```
 
 ```text
-              Search: berserk (2)
-┏━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ # ┃ title      ┃ url                        ┃
-┡━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ 1 │ Berserk    │ /title/801513ba-a712-...   │
-│ 2 │ Berserk... │ /title/15db0fff-95c0-...   │
-└───┴────────────┴────────────────────────────┘
+                       Search: berserk (2)
+┏━━━┳━━━━━━━━━━━━┳━━━━━━━━┳━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ # ┃ title      ┃ rating ┃   ┃ url                        ┃
+┡━━━╇━━━━━━━━━━━━╇━━━━━━━━╇━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 1 │ Berserk    │  4.9★  │   │ /title/801513ba-a712-...   │
+│ 2 │ Berserk... │  4.2★  │   │ /title/15db0fff-95c0-...   │
+└───┴────────────┴────────┴───┴────────────────────────────┘
+```
+
+The `rating` column is a five-star score (`—` when unknown) and the blank column
+carries an `18+` marker for adult titles.
+
+**Auto-pagination.** `-n`/`--all` walk multiple pages for you (backed by the
+SDK's {py:class}`~nyora.pagers.MangaPager`):
+
+```bash
+nyora-cli search -s mangadex "berserk" -n 100   # up to 100 across pages
+nyora-cli popular -s mangadex --all             # everything
 ```
 
 **JSON** emits a {py:class}`~nyora.models.SearchPage` object:
-`{"entries": [...Manga...], "has_next_page": true}`.
+`{"entries": [...Manga...], "has_next_page": true}`. With `-n`/`--all`, all
+collected entries are returned in one page with `"has_next_page": false`.
 
 ---
 
 ## `popular` — list popular manga from a source
 
 ```text
-nyora-cli [--json] popular -s SRC [-p PAGE]
+nyora-cli [--json] popular -s SRC [-p PAGE] [-n LIMIT | --all]
 ```
 
 | Arg / flag | Required | Default | Description |
 | ---------- | -------- | ------- | ----------- |
 | `-s`, `--source SRC` | **yes** | — | Source id or fuzzy name. |
 | `-p`, `--page PAGE` | no | `1` | One-based page number. |
+| `-n`, `--limit N` | no | (off) | Collect up to N results across pages. |
+| `--all` | no | (off) | Collect every result across all pages. |
 
 **Example**
 
 ```bash
 nyora-cli popular -s mangadex -p 2
+nyora-cli popular -s mangadex --limit 50   # auto-paginated
 ```
 
 Output is the same table shape as `search` (titled `Popular (MangaDex)`).
@@ -190,7 +221,7 @@ JSON output is a {py:class}`~nyora.models.SearchPage`.
 ## `latest` — list latest manga from a source
 
 ```text
-nyora-cli [--json] latest -s SRC [-p PAGE]
+nyora-cli [--json] latest -s SRC [-p PAGE] [-n LIMIT | --all]
 ```
 
 Identical flags and output shape to `popular`, but lists the most recently
@@ -279,11 +310,11 @@ source requires to fetch each image (e.g. a `Referer`).
 
 Resolve a chapter's pages and pack them into a single **`.cbz`** archive — a
 standard *Comic Book ZIP* readable by any comic reader (Tachiyomi/Mihon, CDisplayEx,
-YACReader, Komga, etc.). Each page is fetched with a browser `User-Agent`, the
-source-required per-page headers, and a `Referer` derived from the image origin
-when one is not already supplied. Inside the archive the pages are stored
-in-order, named by zero-padded index with an extension inferred from the URL or
-the response `Content-Type` (e.g. `001.jpg`, `002.webp`).
+YACReader, Komga, etc.). Pages are downloaded **concurrently** (with a progress
+bar unless `--json`) but written **in reading order**, named by zero-padded index
+with an extension inferred from the URL or response `Content-Type` (e.g.
+`001.jpg`, `002.webp`). Each page is fetched with a browser `User-Agent`, the
+source-required per-page headers, and a `Referer` derived from the image origin.
 
 ```text
 nyora-cli [--json] download -s SRC [--branch BRANCH] [-o OUT] CHAPTER_URL
@@ -320,9 +351,9 @@ Saved 3/3 pages to comics/aaaa-bbbb-cccc.cbz
 With no `-o`, the archive is written as `<chapter-slug>.cbz` in the current
 directory, where the slug is the last path segment of the chapter URL.
 
-Individual page failures are reported to stderr (`error: page N: ...`) and
-skipped; the command still packs the rest. It exits `1` only when **nothing**
-was saved (no pages, or every page failed) — in that case no `.cbz` is written.
+Individual page failures are counted (not saved) and skipped; the command still
+packs the rest. It exits `1` only when **nothing** was saved (no pages, or every
+page failed) — in that case no `.cbz` is written.
 
 **JSON** emits the archive path and counts:
 
@@ -339,45 +370,79 @@ count.)
 
 ---
 
+## `open` — download a chapter and open it
+
+Like `download`, but after writing the `.cbz` it opens the archive in your OS's
+default application (`open` on macOS, `xdg-open` on Linux, the shell association
+on Windows). Same flags as `download`; there is no `--json` archive output.
+
+```text
+nyora-cli open -s SRC [--branch BRANCH] [-o OUT] CHAPTER_URL
+```
+
+```bash
+nyora-cli open -s mangadex "/chapter/aaaa-bbbb-cccc"
+```
+
+---
+
 ## `batch` — download every chapter of a manga as `.cbz` archives
 
-Fetch a manga's details and download **every** chapter, writing one **`.cbz`**
-archive per chapter into the output directory. Each file is named after a
-filesystem-safe version of the chapter title (`<safe-chapter-title>.cbz`). A
-chapter that yields no pages or fails to download is reported to stderr and
+Fetch a manga's details and download **every** chapter (or a `--range`), writing
+one **`.cbz`** per chapter into the output directory, named after a
+filesystem-safe version of the chapter title. Chapters are taken in normalized
+**reading order** (oldest first), so ranges are stable regardless of how the
+source sorts them. A chapter that yields no pages or fails is reported and
 skipped; the batch keeps going.
 
 ```text
-nyora-cli [--json] batch -s SRC [-o DIR] MANGA_URL
+nyora-cli batch -s SRC [-o DIR] [--range A-B] MANGA_URL
 ```
 
 | Arg / flag | Required | Default | Description |
 | ---------- | -------- | ------- | ----------- |
 | `-s`, `--source SRC` | **yes** | — | Source id or fuzzy name. |
 | `-o`, `--out DIR` | no | `nyora-batch` | Output **directory** for the per-chapter `.cbz` files (created if missing; `~` is expanded). |
+| `--range A-B` | no | (all) | Only chapters A..B in reading order (1-based). `5-` = from 5 to the end; `-3` = the first three. |
 | `MANGA_URL` | **yes** | — | Manga URL (positional). |
 
-**Example**
+**Example** — download chapters 1–10 only:
 
 ```bash
-nyora-cli batch -s mangadex -o ./berserk "/title/801513ba-a712-..."
+nyora-cli batch -s mangadex -o ./berserk --range 1-10 "/title/801513ba-a712-..."
 ```
 
 ```text
 Fetching manga details...
-Found 372 chapters. Saving .cbz archives to berserk...
-
-[1/372] Downloading Chapter 1...
-  -> Chapter_1.cbz (18 pages)
-
-[2/372] Downloading Chapter 2...
-  -> Chapter_2.cbz (20 pages)
-
-Batch complete. Wrote 372 .cbz archives (7012 pages total).
+Downloading 10 chapters as .cbz to berserk
+  Chapter_1.cbz  (18/18 pages)
+  Chapter_2.cbz  (20/20 pages)
+  …
+Done — 10 archives, 192 pages, in berserk
 ```
 
 Each `.cbz` is a standard Comic Book ZIP, so the whole output directory drops
 straight into any comic reader or library server.
+
+---
+
+## `completion` — print shell completion setup
+
+Prints the one line to enable tab-completion for your shell (auto-detected from
+`$SHELL`). Powered by `argcomplete`, which ships in core.
+
+```text
+nyora-cli completion [bash|zsh|fish]
+```
+
+```bash
+$ nyora-cli completion
+# Nyora completion for zsh — add this line to your shell config:
+eval "$(register-python-argcomplete nyora)"   # ~/.zshrc
+```
+
+Add the printed line to your shell config (or run it in the current session),
+then reload. Command names, options, and choices then complete on `TAB`.
 
 ---
 
@@ -396,10 +461,11 @@ nyora-cli version
 ```
 
 ```text
-nyora 2.0.0
+nyora 2.1.0
 ```
 
-**JSON** emits `{"package": "2.0.0"}`.
+**JSON** emits `{"package": "2.1.0"}`. The global `-V`/`--version` flag prints the
+same version string.
 
 ---
 
@@ -443,10 +509,23 @@ nyora-cli download -s mangadex -o ./out "$ch"   # writes ./out/<chapter>.cbz
 nyora-cli --json download -s mangadex "$ch" | jq -r '.file'
 ```
 
-**Download every chapter of a manga, one `.cbz` each, into a folder:**
+**Collect the top 100 popular titles across pages as JSON:**
 
 ```bash
-nyora-cli batch -s mangadex -o ./berserk "$url"
+nyora-cli --json popular -s mangadex --limit 100 | jq '.entries | length'
+```
+
+**Download every chapter of a manga (or a range), one `.cbz` each, into a folder:**
+
+```bash
+nyora-cli batch -s mangadex -o ./berserk "$url"                 # all chapters
+nyora-cli batch -s mangadex -o ./berserk --range 1-10 "$url"    # first ten
+```
+
+**Download the first chapter and open it in your default reader:**
+
+```bash
+nyora-cli open -s mangadex "$ch"
 ```
 
 **List just the page image URLs of a chapter:**

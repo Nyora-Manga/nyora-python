@@ -6,8 +6,8 @@ narrative usage, see the [library guide](../guide/library.md).
 
 ## Package overview
 
-The top-level `nyora` package re-exports the cloud client, the async client, the
-cloud-sync client, the model dataclasses, and the exception hierarchy. Each
+The top-level `nyora` package re-exports the client, the async client, the
+sync client, the model dataclasses, and the exception hierarchy. Each
 re-exported symbol is documented in full under its canonical module section
 below.
 
@@ -18,7 +18,7 @@ below.
 
 ## `nyora.client`
 
-The cloud clients (`Nyora`, `AsyncNyora`) and the `CLOUD_BASE_URL` default.
+The clients (`Nyora`, `AsyncNyora`) — a bare `Nyora()` auto-launches a bundled local engine, or point it at a server via `base_url` / `nyora config set-url`.
 
 ```{eval-rst}
 .. automodule:: nyora.client

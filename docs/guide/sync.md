@@ -13,7 +13,7 @@ Sync is **optional**. Browsing, searching, and reading work anonymously through
 ## How it works
 
 `NyoraSync` talks to the Nyora **sync server** at
-[`https://stream.hasanraza.tech`](https://stream.hasanraza.tech) using an
+[`https://sync.nyora.xyz`](https://sync.nyora.xyz) using an
 **OAuth2 password grant** for sign-in and a **JWT** bearer token for every
 request thereafter. On top of that it offers a generic, **last-write-wins**
 `upsert`/`select` over a small set of per-user tables. When an access token
@@ -34,7 +34,7 @@ sync = NyoraSync()
 `NyoraSync(base_url=None, *, timeout=30.0, token_path=None)`:
 
 - `base_url` — the sync server URL. Defaults to
-  `https://stream.hasanraza.tech`, or the `NYORA_SYNC_URL` environment variable
+  `https://sync.nyora.xyz`, or the `NYORA_SYNC_URL` environment variable
   when set.
 - `timeout` — per-request HTTP timeout in seconds.
 - `token_path` — where to persist tokens. `None` (the default) uses the standard

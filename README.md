@@ -1,16 +1,17 @@
 <div align="center">
 
-<img src="https://nyora.pages.dev/icon.png" width="120" alt="Nyora" />
+<a href="https://nyora.xyz"><img src="https://nyora.xyz/icon.png" width="128" height="128" alt="Nyora logo" /></a>
 
 # Nyora — the manga reader SDK for Python
 
 ### Build your own manga, manhwa & manhua reader in ~10 lines.
 
-**`nyora`** is the official Python SDK for [Nyora](https://nyora.pages.dev) — a thin
-cloud client that gives you **363 live, health-checked sources across 40 languages**
+**`nyora`** is the official Python SDK for [Nyora](https://nyora.xyz) — a
+self-contained client that gives you **390 live, health-checked sources across 40 languages**
 through one typed API: search, browse, read chapters, download `.cbz`, and sync a
-library across devices. No scraper to maintain, no JVM, no parser engine on your
-machine — `pip install nyora` and you're reading in 60 seconds.
+library across devices. `pip install nyora` bundles the parser engine and launches it
+locally on demand (auto-downloads a JRE if you don't have Java) — no server, no scraper
+to maintain. You're reading in 60 seconds.
 
 <p>
   <a href="https://pypi.org/project/nyora/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/nyora?style=for-the-badge&logo=pypi&logoColor=white" /></a>
@@ -50,9 +51,9 @@ machine — `pip install nyora` and you're reading in 60 seconds.
 
 | | |
 |---|---|
-| 📚 **363 working sources** | Every source is live health-checked; 597 dead or Cloudflare-walled ones are auto-hidden, so `list()`/`catalog()` return only sources that actually work — **363 across 40 languages** (268 all-ages, 95 mature). |
+| 📚 **390 working sources** | Every source is live health-checked; 570 dead or Cloudflare-walled ones are auto-hidden, so `list()`/`catalog()` return only sources that actually work — **390 across 40 languages** (268 all-ages, 95 mature). |
 | 🌐 **One typed API** | `Source`, `Manga`, `MangaChapter`, `MangaPage`, `MangaDetails` dataclasses. Full type hints, `py.typed`, mypy-clean. |
-| ☁️ **Cloud-powered** | The [kotatsu-parsers](https://github.com/KotatsuApp/kotatsu-parsers) engine runs server-side. You get parsed results, not scraping headaches — nothing to compile, no JVM, no Node. |
+| 📦 **Self-contained** | Bundles the [kotatsu-parsers](https://github.com/KotatsuApp/kotatsu-parsers) engine and runs it locally (auto-downloads a JRE if you have no Java). Parsed results, not scraping headaches — nothing to compile, no Node, no server. |
 | 🔀 **Correct chapter order** | Built-in `next_chapter()` / `previous_chapter()` work on both ascending (MangaDex `0→N`) and descending (scanlation `N→0`) sources — no off-by-one "next goes backwards" bug. |
 | 🧰 **Batteries included** | A CLI, an interactive terminal reader (TUI), a `.cbz` downloader, and cross-device cloud sync — all in one `pip install`. |
 | ⚡ **Sync & async** | Use `Nyora` or `AsyncNyora` with identical APIs. |
@@ -61,11 +62,13 @@ machine — `pip install nyora` and you're reading in 60 seconds.
 ## Install
 
 ```bash
-pip install nyora           # library + CLI + JSON output
-pip install "nyora[tui]"    # + the interactive terminal reader
+pip install nyora           # everything: the library, the CLI, and the terminal reader (TUI)
 ```
 
-Requires Python 3.10+. Nothing else — the parser engine lives in the cloud.
+Requires Python 3.10+. Nothing else to run — the parser engine is **bundled** and
+launches locally on demand (a JRE is auto-downloaded if you have no Java). One
+install ships all three front-ends: `import nyora` (library), `nyora-cli`
+(CLI), and bare `nyora` (TUI).
 
 <a name="quickstart"></a>
 ## Quickstart — a working reader in 10 lines
@@ -74,7 +77,7 @@ Requires Python 3.10+. Nothing else — the parser engine lives in the cloud.
 import nyora
 
 with nyora.Nyora() as client:
-    source = client.sources.find("mangadex")           # pick any of 363 sources
+    source = client.sources.find("mangadex")           # pick any of 390 sources
     hits = client.manga.search(source.id, "frieren")   # search it
     manga = hits.entries[0]
 
@@ -115,7 +118,7 @@ nyora.Nyora(base_url=None, *, timeout=60.0)      # sync client (context manager)
 nyora.AsyncNyora(base_url=None, *, timeout=60.0) # async client, identical API with await
 ```
 
-`base_url` defaults to the public Nyora cloud (`https://api.hasanraza.tech`). Attributes:
+`base_url` defaults to a bundled engine launched locally; pass a URL (or run `nyora config set-url`) to use a server instead. Attributes:
 `client.sources`, `client.manga`, `client.library`, `client.downloads`. Also `client.health()`.
 
 ### `client.sources`
@@ -261,13 +264,13 @@ order-independent **next / previous chapter** navigation and inline downloads.
 <a name="how-it-works"></a>
 ## How it works
 
-`nyora` is a **thin cloud client**. It speaks a small typed REST API to the public
-**Nyora cloud helper** (`https://api.hasanraza.tech`) — the kotatsu-parsers JVM engine
-with hundreds of sources — so there is nothing to compile and no parser engine, JVM,
-Node.js, or bundle on your machine. Dead and Cloudflare-blocked sources are filtered
-out client-side from a periodically refreshed health-check, so you only ever see the
-**363 sources that actually return content**. Self-host the helper and point `base_url`
-at it if you'd rather run your own.
+`nyora` is **self-contained**. `pip install nyora` bundles the kotatsu-parsers JVM
+engine (and auto-downloads a JRE if you don't have Java); `Nyora()` launches it locally
+on demand — no server, no Node.js, nothing to compile. Dead and Cloudflare-blocked
+sources are hidden (a sensible static list by default; run `nyora blocklist refresh` to
+health-probe *your* engine and tailor it), so `list()`/`catalog()` return only the
+**~390 sources that actually work**. Prefer a server? Point `base_url` (or
+`nyora config set-url`) at any Nyora helper.
 
 <a name="faq"></a>
 ## FAQ
@@ -277,7 +280,7 @@ at it if you'd rather run your own.
 `client.manga.pages(...)` returns image URLs you can render in any UI.
 
 **What's the best manga API / SDK?**
-Nyora gives you 363 working, health-checked sources across 40 languages behind one typed
+Nyora gives you 390 working, health-checked sources across 40 languages behind one typed
 Python API — no scraper maintenance, plus a CLI, TUI, downloader and cloud sync.
 
 **Is this a Tachiyomi / Mihon / Kotatsu alternative?**
@@ -296,9 +299,9 @@ comics across 40 languages.
 ## Ecosystem
 
 - **JS/TS SDK** — [`nyora-sdk`](https://www.npmjs.com/package/nyora-sdk) (`npm i nyora-sdk`)
-- **Apps** — Android, iOS/iPadOS, macOS, Windows, Linux and a web app: <https://nyora.pages.dev>
-- **Docs** — <https://nyora.pages.dev/docs/python/>
-- **Source** — <https://github.com/Hasan72341/nyora-python>
+- **Apps** — Android, iOS/iPadOS, macOS, Windows, Linux and a web app: <https://nyora.xyz>
+- **Docs** — <https://nyora.xyz/docs/python/>
+- **Source** — <https://github.com/Nyora-Manga/nyora-python>
 
 ## License
 

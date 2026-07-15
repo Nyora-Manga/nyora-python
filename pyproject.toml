@@ -1,7 +1,7 @@
 [project]
 name = "nyora"
-version = "2.0.3"
-description = "The manga reader SDK for Python — build a manga/manhwa/manhua reader with 363 working sources across 40 languages through one typed cloud API. A programmatic Tachiyomi/Mihon/Kotatsu alternative, with a CLI and terminal reader (TUI)."
+version = "2.1.0"
+description = "The manga reader SDK for Python — build a manga/manhwa/manhua reader with 390 working sources across 40 languages through one typed API — fully self-contained (bundles & auto-launches its own local parser engine, no cloud required) or pointed at any server. A programmatic Tachiyomi/Mihon/Kotatsu alternative, with a CLI and terminal reader (TUI)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -26,21 +26,25 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    # --- engine / SDK core ---
     "httpx>=0.27.0",
     "platformdirs>=4.2.0",
-    "quickjs>=1.19.4",
-    "selectolax>=0.4.10",
+    "nyora-extension-server>=0.1.0",  # bundled local parser engine (self-contained)
     "typing-extensions>=4.12.0",
-]
-
-[project.optional-dependencies]
-tui = [
+    # --- full experience shipped by default: rich CLI, TUI, images, completion ---
     "rich>=13.7.0",
     "textual>=0.86.0",
     "textual-image>=0.13.2; python_version >= '3.12'",
     "rich-pixels>=3.0.1",
     "pillow>=10.0.0",
+    "argcomplete>=3.0",
 ]
+
+[project.optional-dependencies]
+# Everything ships in core now; these are kept as no-op aliases so existing
+# `pip install "nyora[tui]"` / `"nyora[completion]"` commands keep working.
+tui = []
+completion = []
 docs = [
     "sphinx>=7.3",
     "furo>=2024.5",
@@ -57,12 +61,14 @@ dev = [
     "twine>=5.1.0",
 ]
 
+# Label names are chosen so PyPI renders branded sidebar icons: it detects the
+# GitHub host for "Source Code", and matches "Documentation"/"Issue Tracker".
 [project.urls]
-Homepage = "https://nyora.pages.dev"
-"Official Site" = "https://nyora.pages.dev"
-Documentation = "https://nyora.pages.dev/docs/python/"
-Repository = "https://github.com/Hasan72341/nyora-python"
-Issues = "https://github.com/Hasan72341/nyora-python/issues"
+Homepage = "https://nyora.xyz"
+Documentation = "https://nyora.xyz/docs/python/"
+"Web App" = "https://web.nyora.xyz"
+"Source Code" = "https://github.com/Nyora-Manga/nyora-python"
+"Issue Tracker" = "https://github.com/Nyora-Manga/nyora-python/issues"
 
 [project.scripts]
 nyora-tui = "nyora_tui.app:main"
@@ -101,5 +107,5 @@ check_untyped_defs = true
 packages = ["nyora", "nyora_tui"]
 
 [[tool.mypy.overrides]]
-module = ["quickjs"]
+module = ["nyora_extension_server", "rich_pixels", "textual_image", "textual_image.*", "textual.*", "PIL", "PIL.*", "argcomplete"]
 ignore_missing_imports = true

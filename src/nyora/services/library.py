@@ -5,24 +5,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from nyora.models import Category, HistoryEntry, Manga
+from nyora.services._base import _Service
 
 if TYPE_CHECKING:
-    from nyora.client import Nyora
+    pass
 
 
-class LibraryService:
+class LibraryService(_Service):
     """Manage reading history, favourites, bookmarks, and categories.
 
     Attached to a client as ``client.library``.
     """
 
-    def __init__(self, client: Nyora) -> None:
-        """Bind the service to a helper client.
-
-        Args:
-            client: The owning :class:`nyora.client.Nyora` instance.
-        """
-        self._client = client
 
     def history(self, limit: int = 100) -> list[HistoryEntry]:
         """Return recent reading history.

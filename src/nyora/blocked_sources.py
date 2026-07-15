@@ -2,19 +2,114 @@
 These sources consistently returned NO browsable content (dead upstreams,
 broken parsers, cert/handshake failures, or a browser-only Cloudflare
 challenge) on both /sources/popular and /sources/latest, so they are hidden
-from the catalog. IDs match the cloud helper's bare source id (no prefix).
-597 disabled of 960 (363 working remain). Regenerate periodically."""
+from the catalog. IDs match the engine's bare source id (no prefix).
+570 disabled of 960 (390 working remain). Regenerate periodically."""
 
 from __future__ import annotations
 
+import concurrent.futures
+import hashlib
+import json
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-def is_blocked_source(source_id: str) -> bool:
-    """Return ``True`` if ``source_id`` is a dead / Cloudflare-walled source.
+from nyora.config import config_file
 
-    The cloud helper returns prefixed ids (``parser:NAME``) while this set
-    stores the bare names, so the prefix is stripped before comparison.
+if TYPE_CHECKING:
+    from nyora.client import Nyora
+
+def is_blocked_source(source_id: str, base_url: str | None = None) -> bool:
+    """Return ``True`` if ``source_id`` should be hidden for the given server.
+
+    Resolution: a per-server generated blocklist (cached after
+    ``nyora blocklist refresh``) if present → otherwise the shipped static list.
+    The static list is a sensible default for *any* server since every Nyora
+    engine (your bundled one or a self-hosted server) runs the same parser
+    stack, so the same upstreams are dead; run ``nyora blocklist refresh`` to
+    tailor it.
+
+    The engine returns prefixed ids (``parser:NAME``); the static set stores bare
+    names, so the prefix is stripped before comparison.
     """
-    return source_id.rsplit(":", 1)[-1] in BLOCKED_SOURCE_IDS
+    bare = source_id.rsplit(":", 1)[-1]
+    if base_url:
+        cached = load_server_blocklist(base_url)
+        if cached is not None:
+            return source_id in cached or bare in cached
+    return bare in BLOCKED_SOURCE_IDS
+
+
+def _server_key(base_url: str | None) -> str:
+    return hashlib.sha1((base_url or "").encode("utf-8")).hexdigest()[:12]
+
+
+def blocklist_cache_file(base_url: str | None):
+    """Path of the generated per-server blocklist cache (next to the config)."""
+    return config_file().parent / f"blocked-{_server_key(base_url)}.json"
+
+
+def load_server_blocklist(base_url: str | None) -> set[str] | None:
+    """Return the generated blocklist for ``base_url``, or ``None`` if none exists."""
+    path = blocklist_cache_file(base_url)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        ids = data.get("blocked") if isinstance(data, dict) else data
+        return set(ids) if isinstance(ids, list) else None
+    except Exception:
+        return None
+
+
+def save_server_blocklist(base_url: str | None, blocked_ids) -> None:
+    """Persist a generated blocklist for ``base_url``."""
+    path = blocklist_cache_file(base_url)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"base_url": base_url, "blocked": sorted(blocked_ids)}, indent=1),
+        encoding="utf-8",
+    )
+
+
+def generate_blocklist(
+    client: Nyora,
+    *,
+    workers: int = 8,
+    on_progress: Callable[[int, int, int], None] | None = None,
+) -> set[str]:
+    """Probe every catalog source on ``client``'s server and cache the dead ones.
+
+    A source is "dead" if BOTH ``/sources/popular`` and ``/sources/latest`` return
+    no entries. The result is saved via :func:`save_server_blocklist` for the
+    client's base URL, so subsequent ``list()``/``catalog()`` calls hide them.
+
+    This is exactly what makes the blocklist "auto-create after configuring a URL":
+    run it once against your own server.
+    """
+    data = client.get("/sources/catalog")
+    ids = [e.get("id") for e in (data.get("entries") or []) if e.get("id")]
+
+    def probe(sid: str) -> tuple[str, bool]:
+        for route in ("/sources/popular", "/sources/latest"):
+            try:
+                res = client.get(route, params={"id": sid, "page": 1})
+                if res.get("entries"):
+                    return sid, True
+            except Exception:
+                pass
+        return sid, False
+
+    dead: set[str] = set()
+    total, done = len(ids), 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        for sid, ok in ex.map(probe, ids):
+            if not ok:
+                dead.add(sid)
+            done += 1
+            if on_progress:
+                on_progress(done, total, len(dead))
+    save_server_blocklist(getattr(client, "base_url", None), dead)
+    return dead
 
 
 #: Bare source names hidden from ``list()`` / ``catalog()`` — dead or Cloudflare-walled.
@@ -37,7 +132,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "ARAREASCANS",
     "ARAZNOVEL",
     "ARCTICSCAN",
-    "ARCURAFANSUB",
     "AREASCANS",
     "ARMONISCANS",
     "ARTHUR_SCAN",
@@ -67,7 +161,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "BOOKMANGA",
     "BRMANGASTOP",
     "CAFECOMYAOI",
-    "CHAINSAWMANSCAN",
     "CMANGA",
     "COFFEE_MANGA",
     "COMICSVALLEY",
@@ -115,14 +208,12 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "FIRESCANS",
     "FIRSTKISSMANHUA",
     "FLARES",
-    "FLOWERMANGA",
     "FMTEAM",
     "FREEMANGA",
     "FREEMANGATOP",
     "FURYMANGA",
     "FUTARI",
     "GAFELAND",
-    "GAIATOON",
     "GEASSCOMICS",
     "GISTAMISHOUSEFANSUB",
     "GMANGA",
@@ -149,12 +240,10 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "HENTAIORIGINES",
     "HENTAIREAD",
     "HENTAISCANTRADVF",
-    "HENTAISEASON",
     "HENTAITECA",
     "HENTAIVNBUZZ",
     "HENTAIVNSU",
     "HENTAIWEBTOON",
-    "HENTAIZONE",
     "HENTAMAN",
     "HERENSCAN",
     "HHENTAIFR",
@@ -173,7 +262,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "IMPERIODABRITANNIA",
     "INOVASCANMANGA",
     "IRISSCANLATOR",
-    "ISEKAISCAN_EU",
     "ITSYOURIGHTMANHUA",
     "JIANGZAITOON",
     "JIMANGA",
@@ -195,7 +283,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "KOMIKMAMA",
     "KOMIKREALM",
     "KOMIKSIN_CO",
-    "KOMIKSTATION",
     "KOMIKU",
     "KOMIKZOID",
     "KORELISCANS",
@@ -244,16 +331,8 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "MANGACUTE",
     "MANGADEEMAK",
     "MANGADOP",
-    "MANGADOTNET",
     "MANGAEFENDISI",
     "MANGAFASTNET",
-    "MANGAFIRE_EN",
-    "MANGAFIRE_ES",
-    "MANGAFIRE_ESLA",
-    "MANGAFIRE_FR",
-    "MANGAFIRE_JA",
-    "MANGAFIRE_PT",
-    "MANGAFIRE_PTBR",
     "MANGAFLAME",
     "MANGAFOREST",
     "MANGAFORFREE",
@@ -280,7 +359,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "MANGAKOMA01",
     "MANGAKYO",
     "MANGALAND",
-    "MANGALC",
     "MANGALEK",
     "MANGALEKO",
     "MANGALEVELING",
@@ -308,10 +386,8 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "MANGAROSE",
     "MANGASECT",
     "MANGASEHRI",
-    "MANGASEHRINET",
     "MANGASHIINA",
     "MANGASNOSEKAI",
-    "MANGASORIGINES",
     "MANGASOUL",
     "MANGASSCANS",
     "MANGASTARZ",
@@ -383,7 +459,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "MEHENTAIVN",
     "MERLINSCANS",
     "MGKOMIK",
-    "MHSCANS",
     "MI2MANGAES",
     "MIAUSCAN",
     "MIKOROKU",
@@ -436,7 +511,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "NORTEROSE",
     "NOVELCROW",
     "NOVELMIC",
-    "NUDEMOON",
     "OLAOE",
     "OLIMPOSCANS",
     "ONEPIECESCAN",
@@ -491,7 +565,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "SCANJUJUTSUKAISEN",
     "SCANS4U",
     "SCANTRAD",
-    "SCANVF",
     "SCANVFORG",
     "SCYLLACOMICS",
     "SECTSCANS",
@@ -500,12 +573,10 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "SEKTEKOMIK",
     "SELFMANGA",
     "SENKURO",
-    "SEREINSCAN",
     "SETSUSCANS",
     "SHADOWMANGAS",
     "SHIBAMANGA",
     "SHIRAKAMI",
-    "SHIRO_DOUJIN",
     "SHOOTINGSTARSCANS",
     "SILENCESCAN",
     "SIRENKOMIK",
@@ -549,7 +620,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "TRUEMANGA",
     "TRUYENHENTAIVN",
     "TRUYENTRANH3Q",
-    "TRUYENTRANHFULL",
     "TRUYENVN",
     "TUKANGKOMIK",
     "TUMANGAONLINE",
@@ -558,7 +628,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "TU_MANHWAS",
     "TYRANTSCANS",
     "ULASCOMIC",
-    "UNIVERSOHENTAI",
     "USAGI",
     "UTOON",
     "UZAYMANGA",
@@ -568,7 +637,6 @@ BLOCKED_SOURCE_IDS: frozenset[str] = frozenset(
     "VERCOMICSPORNO",
     "VERMANGASPORNO",
     "VINLANDSAGA",
-    "VYMANGA",
     "WALPURGISCAN",
     "WAMANGA",
     "WAVETEAMY",

@@ -1,6 +1,6 @@
 """Sphinx configuration for the Nyora Python documentation.
 
-Builds the HTML docs served at https://nyora.pages.dev/docs/python/. The ``src``
+Builds the HTML docs served at https://nyora.xyz/docs/python/. The ``src``
 directory is inserted on ``sys.path`` so :mod:`autodoc` can import the real
 ``nyora`` and ``nyora_tui`` packages and document them from source.
 """
@@ -95,7 +95,7 @@ intersphinx_mapping = {
 
 html_theme = "furo"
 html_title = "Nyora Python"
-html_baseurl = "https://nyora.pages.dev/docs/python/"
+html_baseurl = "https://nyora.xyz/docs/python/"
 html_static_path = ["_static"]
 html_css_files = ["brand.css"]
 

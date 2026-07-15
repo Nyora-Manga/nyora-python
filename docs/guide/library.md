@@ -1,7 +1,7 @@
 # Library / SDK guide
 
 This is the complete guide to the **Nyora library** (`pip install nyora`,
-`import nyora`). It covers the cloud client, its async counterpart, every service
+`import nyora`). It covers the client, its async counterpart, every service
 method with its signature and return type, context-manager usage, error
 handling, and the model dataclasses. Cloud account and library sync live in a
 separate client, {py:class}`nyora.sync.NyoraSync`, documented in the
@@ -16,7 +16,7 @@ about the importable `nyora` package only.
 
 | Client | Import | Backend | Use when |
 | --- | --- | --- | --- |
-| `nyora.Nyora` | `from nyora import Nyora` | REST over HTTP to the Nyora cloud (default) | **Default.** Browse, search, read, and — against a full helper deployment — manage library, downloads, history, and backup. |
+| `nyora.Nyora` | `from nyora import Nyora` | bundled local engine, or REST to any server (default) | **Default.** Browse, search, read, and — against a full helper deployment — manage library, downloads, history, and backup. |
 | `nyora.AsyncNyora` | `from nyora import AsyncNyora` | Async REST to the same endpoint | You need `async`/`await` read access. |
 | `nyora.NyoraSync` | `from nyora import NyoraSync` | OAuth2/JWT to the Nyora **sync** server | You want to sync a user's favourites, history, and bookmarks. See the [sync guide](sync.md). |
 
@@ -35,10 +35,9 @@ with Nyora() as client:
         print(source.id, source.name)
 ```
 
-`Nyora` is a thin, typed HTTP client. By default it targets the public Nyora
-cloud ([`nyora.CLOUD_BASE_URL`](../reference/api.md), i.e.
-`https://api.hasanraza.tech`), so a bare `Nyora()` just works with nothing else
-running.
+`Nyora` is a self-contained, typed client. By default a bare `Nyora()` launches a
+bundled local engine (via `nyora-extension-server`), so it just works with nothing
+else running. Point it at a server with `base_url=...` or `nyora config set-url`.
 
 ### Construction and discovery
 

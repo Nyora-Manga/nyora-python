@@ -1,22 +1,21 @@
-"""Interactive terminal reader for Nyora's embedded parser runtime.
+"""Full-screen Textual reader for Nyora's bundled parser engine.
 
-Provides three progressively-degrading frontends sharing the same navigation
-flow (pick source -> search/popular -> browse results -> details + chapters ->
-chapter pages):
+A dense, keyboard-driven terminal reader: two-pane source/result tables with
+vim navigation, a popular/latest/search mode switch, a fuzzy command palette,
+light/dark themes, cloud + local library/history/downloads, three reader modes
+(webtoon / paged / paged-rtl), and terminal-graphics page rendering.
 
-* a full-screen ``textual`` app when ``textual`` is importable;
-* a ``rich``-based interactive prompt fallback;
-* a plain-text ``input()`` fallback when neither is available.
-
-All three drive the cloud :class:`nyora.Nyora` client and the cloud sync
-(:class:`nyora_tui.sync.TuiSync`), and degrade gracefully on network/parse
-errors instead of crashing.
+Backed by the self-contained :class:`nyora.Nyora` client (which launches the
+bundled local engine) plus optional cloud sync (:class:`nyora_tui.sync.TuiSync`)
+and a local store (:mod:`nyora_tui.store`). Degrades gracefully on network/parse
+errors instead of crashing. Requires the ``[tui]`` extra (``pip install
+"nyora[tui]"``); without it, :func:`main` prints an install hint and exits.
 """
 
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from nyora import Nyora
 
@@ -71,18 +70,101 @@ def _filter_sources(sources: list[Source], query: str) -> list[Source]:
     return [s for s in sources if needle in s.id.casefold() or needle in s.name.casefold()]
 
 
-def _fetch_results(client: Nyora, source_id: str, query: str, page: int) -> SearchPage:
-    if query.strip():
-        return client.manga.search(source_id, query.strip(), page=page)
-    return client.manga.popular(source_id, page=page)
 
 
 def _fetch_details(client: Nyora, source_id: str, url: str, title: str) -> MangaDetails:
-    return client.manga.details(source_id, url, title=title)
+    details = client.manga.details(source_id, url)
+    if title and not details.manga.title:
+        details.manga.title = title
+    return details
 
 
 def _fetch_pages(client: Nyora, source_id: str, url: str, branch: str | None):
     return client.manga.pages(source_id, url, branch=branch)
+
+
+def _fetch_browse(client: Nyora, source_id: str, mode: str, query: str, page: int) -> SearchPage:
+    """Fetch one page of results for a browse ``mode`` (popular/latest/search)."""
+    if mode == "search" and query.strip():
+        return client.manga.search(source_id, query.strip(), page=page)
+    if mode == "latest":
+        return client.manga.latest(source_id, page=page)
+    return client.manga.popular(source_id, page=page)
+
+
+def _relative_age(epoch_ms: int) -> str:
+    """Render an epoch-millisecond timestamp as a compact relative age (e.g. ``3d``)."""
+    if not epoch_ms:
+        return "—"
+    import time as _time
+
+    secs = _time.time() - epoch_ms / 1000.0
+    if secs < 0:
+        secs = 0.0
+    for unit, size in (
+        ("y", 31_536_000), ("mo", 2_592_000), ("d", 86_400), ("h", 3_600), ("m", 60)
+    ):
+        if secs >= size:
+            return f"{int(secs // size)}{unit}"
+    return "now"
+
+
+def _hist_when(iso: str) -> str:
+    """Render an ISO-8601 timestamp as a compact relative age (e.g. ``3d``)."""
+    if not iso:
+        return "—"
+    from datetime import datetime
+
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return "—"
+    return _relative_age(int(dt.timestamp() * 1000))
+
+
+def _rating_badge(rating: float) -> str:
+    """Render a normalized 0..1 rating as a five-star score, or ``—`` when unknown."""
+    if rating is None or rating < 0:
+        return "—"
+    return f"{rating * 5:.1f}★"
+
+
+def _truncate(text: str, limit: int) -> str:
+    """Truncate ``text`` to ``limit`` characters with an ellipsis when clipped."""
+    text = (text or "").replace("\n", " ").strip()
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+# Locale code -> human-readable language name, for grouping the source list.
+_LANG_NAMES = {
+    "en": "English", "ja": "Japanese", "zh": "Chinese", "zh-hans": "Chinese (Simplified)",
+    "zh-hant": "Chinese (Traditional)", "ko": "Korean", "es": "Spanish",
+    "es-419": "Spanish (LatAm)",
+    "fr": "French", "pt": "Portuguese", "pt-br": "Portuguese (Brazil)", "ru": "Russian",
+    "de": "German", "it": "Italian", "id": "Indonesian", "ar": "Arabic", "tr": "Turkish",
+    "vi": "Vietnamese", "th": "Thai", "pl": "Polish", "uk": "Ukrainian", "nl": "Dutch",
+    "fa": "Persian", "fil": "Filipino", "ms": "Malay", "hi": "Hindi", "he": "Hebrew",
+    "ca": "Catalan", "hu": "Hungarian", "ro": "Romanian", "cs": "Czech", "bg": "Bulgarian",
+    "el": "Greek", "sv": "Swedish", "da": "Danish", "fi": "Finnish", "no": "Norwegian",
+    "multi": "Multi-language",
+}
+
+
+def _lang_display(code: str) -> str:
+    """Return a readable language name for a locale ``code`` (``en`` -> ``English``)."""
+    c = (code or "").strip().lower()
+    if not c:
+        return "Other / Unknown"
+    return _LANG_NAMES.get(c, code.upper())
+
+
+def _lang_sort_key(code: str):
+    """Sort key that floats English then Multi-language up, unknown to the bottom."""
+    c = (code or "").strip().lower()
+    if not c:
+        return (3, "")
+    priority = {"en": 0, "multi": 1}
+    return (priority.get(c, 2), _lang_display(c).casefold())
 
 
 # --------------------------------------------------------------------------- #
@@ -91,29 +173,17 @@ def _fetch_pages(client: Nyora, source_id: str, url: str, branch: str | None):
 def main() -> int:
     """Entry point for the ``nyora-tui`` console script (and bare ``nyora-cli``).
 
-    Selects the richest usable frontend (textual -> rich -> plain ``input()``)
-    and drives the shared source -> results -> details -> pages navigation flow,
-    all backed by the cloud :class:`nyora.Nyora` client.
-
-    Safe to launch from a non-interactive context: when no interactive terminal
-    is attached (``sys.stdout`` is not a TTY) the reader does **not** start and
-    cannot crash — it prints a short notice explaining that an interactive
-    terminal is required and returns ``0``. Returns an exit code (``0`` on a
-    clean exit); ``None`` is never returned so callers may treat the result as
-    an ``int``.
+    Launches the Textual reader. Exits cleanly (``0``) when stdout is not a TTY
+    (piped/redirected/CI) or when the TUI dependencies are not installed.
     """
     if not _has_interactive_terminal():
         _print_no_tty_notice()
         return 0
     try:
-        if _run_textual():
-            return 0
-        if _run_rich():
-            return 0
-        _run_plain()
+        if not _run_textual():
+            print(_INSTALL_HINT)
     except (KeyboardInterrupt, EOFError):  # pragma: no cover - interactive
         print()
-        return 0
     return 0
 
 
@@ -128,86 +198,1084 @@ def _print_no_tty_notice() -> None:
 # --------------------------------------------------------------------------- #
 # Textual frontend.
 # --------------------------------------------------------------------------- #
-def _run_textual() -> bool:
+def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion beats fragmentation
     try:
         import textual  # noqa: F401
     except ImportError:
         return False
 
+    import time
+
+    from rich.markup import escape as _esc  # escape source/title text before markup
+    from textual import work
     from textual.app import App, ComposeResult
     from textual.binding import Binding
-    from textual.containers import Horizontal, Vertical
-    from textual.screen import Screen
+    from textual.command import DiscoveryHit, Hit, Hits, Provider
+    from textual.containers import Horizontal, Vertical, VerticalScroll
+    from textual.screen import ModalScreen, Screen
+    from textual.theme import Theme
     from textual.widgets import (
-        Footer, Header, Input, Label, ListItem, ListView,
-        Static
+        Button,
+        DataTable,
+        Footer,
+        Header,
+        Input,
+        Label,
+        ListItem,
+        ListView,
+        Static,
     )
-    from textual.worker import Worker, WorkerState
 
-    class _Row(ListItem):
-        def __init__(self, label: str, payload) -> None:
-            super().__init__(Label(label))
-            self.payload = payload
+    from nyora_tui.store import Downloads, LocalLibrary, manga_id_of
+    from nyora_tui.sync import BROWSER_UA, TuiSync
 
-    class NyoraTui(App):
-        """The main terminal UI application for Nyora.
-        
-        Provides a macOS-style multi-pane layout to filter sources on the left
-        and browse manga search/popular results on the right.
+    # Named colour schemes ported from nyora-web: each is a Material accent with
+    # a light and a dark variant (+ a secondary tone), over a shared neutral
+    # base per appearance. Sakura leads — it is the default.
+    # Format: (id, display name, light accent, dark accent).
+    _SCHEMES = [
+        ("sakura", "Sakura", "#8C4A60", "#FFB1C8"),
+        ("totoro", "Totoro", "#3C6090", "#A6C8FF"),
+        ("miku", "Miku", "#00696D", "#6FDDE2"),
+        ("asuka", "Asuka", "#904A40", "#FFB4A8"),
+        ("mion", "Mion", "#3B693A", "#A1D39A"),
+        ("rikka", "Rikka", "#68548D", "#D3BBFD"),
+        ("mamimi", "Mamimi", "#465D91", "#AFC6FF"),
+        ("kanade", "Kanade", "#353543", "#EDEDF2"),
+        ("itsuka", "Itsuka", "#974800", "#FFBA8F"),
+        ("yuki", "Yuki", "#43474A", "#3B3F42"),
+    ]
+    # `label` = neutral secondary-text colour, readable on either appearance. Only
+    # the accent carries scheme identity — like nyora-web.
+    _DARK_BASE = {"bg": "#0C0C0E", "surface": "#16161A", "panel": "#26262B", "fg": "#F2F2F4",
+                  "muted": "#A1A1A6", "label": "#AEB6C6"}
+    _LIGHT_BASE = {"bg": "#F4F4F6", "surface": "#FFFFFF", "panel": "#D9D9DE", "fg": "#111114",
+                   "muted": "#57575E", "label": "#4C5560"}
+
+    def _make_theme(name: str, accent: str, base: dict, is_dark: bool) -> Theme:
+        return Theme(
+            name=name,
+            primary=accent,
+            secondary=base["label"],
+            accent=accent,
+            foreground=base["fg"],
+            background=base["bg"],
+            surface=base["surface"],
+            panel=base["panel"],
+            success="#7FB88A" if is_dark else "#3B863F",
+            warning="#E0B354" if is_dark else "#9A6A00",
+            error="#EB7D9B" if is_dark else "#B23A5B",
+            dark=is_dark,
+            variables={
+                "block-cursor-background": accent,
+                "block-cursor-foreground": base["bg"],
+                "block-cursor-text-style": "bold",
+                "footer-key-foreground": accent,
+                "footer-description-foreground": base["muted"],
+                "footer-background": base["surface"],
+                "input-selection-background": f"{accent} 30%",
+                "input-cursor-background": accent,
+                "scrollbar": base["panel"],
+                "scrollbar-hover": accent,
+                "scrollbar-active": accent,
+                "scrollbar-background": base["bg"],
+                "border": base["panel"],
+            },
+        )
+
+    _THEMES: dict[str, Theme] = {}
+    for _sid, _nm, _light, _dark in _SCHEMES:
+        _THEMES[_sid] = _make_theme(_sid, _dark, _DARK_BASE, True)
+        _THEMES[f"{_sid}-light"] = _make_theme(f"{_sid}-light", _light, _LIGHT_BASE, False)
+    _DEFAULT_THEME = "sakura"
+
+    def _scheme_of(theme_name: str) -> str:
+        return theme_name[:-6] if theme_name.endswith("-light") else theme_name
+
+    def _is_light(theme_name: str) -> bool:
+        return theme_name.endswith("-light")
+
+    def _theme_name(scheme: str, light: bool) -> str:
+        return f"{scheme}-light" if light else scheme
+
+    SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+    _WELCOME = (
+        "[$primary]❀[/] [b $accent]Nyora[/]  [dim]· terminal manga reader[/]\n\n"
+        "[$secondary]Getting started[/]\n"
+        "  [b]1[/]  Pick a source on the left — type to filter, [b]enter[/] to open\n"
+        "  [b]2[/]  Browse:  [b]/[/] search   ·   [b]p[/] popular   ·   [b]l[/] latest\n"
+        "  [b]3[/]  [b]enter[/] a title → chapters → [b]enter[/] to read\n\n"
+        "[$secondary]Handy keys[/]\n"
+        "  [b]j k[/] move   [b]g G[/] top/bottom   [b]x[/] toggle 18+   [b]a[/] account\n"
+        "  [b]?[/] all keybindings   ·   [b]ctrl+p[/] command palette   ·   [b]q[/] quit\n\n"
+        "[dim]Sources are grouped by language. Nothing is hosted here — Nyora reads\n"
+        "publicly available sources through the bundled engine.[/]"
+    )
+
+    def _timed(fn, *a, **k):
+        """Run ``fn`` via ``_safe`` and also return elapsed milliseconds."""
+        t0 = time.perf_counter()
+        res, err = _safe(fn, *a, **k)
+        return res, err, (time.perf_counter() - t0) * 1000.0
+
+    # Resolve the best terminal-image renderer and cache the terminal cell size
+    # *before* Textual starts — textual-image can only query the terminal for
+    # graphics support and cell geometry while stdin/stdout are still ours (the
+    # `import` below performs that probe). Sending the full-resolution source
+    # image lets a graphics terminal downscale it itself — the sharpest result
+    # a terminal can produce ("full-res").
+    #
+    # textual-image's TGP probe uses a 100 ms timeout and misses Ghostty/Kitty —
+    # both fully support the Kitty graphics protocol with unicode placeholders
+    # (unlike wezterm/konsole, whose placeholder support is broken and where
+    # Sixel is preferred). So on exactly those two terminals we force TGP for
+    # true full-resolution pages instead of falling back to low-res half-cells.
+    # `NYORA_TUI_IMAGE=tgp|sixel|halfcell|auto` overrides the choice.
+    _IMAGE_CLS = None
+    _CELL_W, _CELL_H = 10, 20
+    _PROTOCOL = "none"
+    try:
+        import os as _os
+
+        from textual_image.widget import HalfcellImage as _HalfcellImage
+        from textual_image.widget import Image as _AutoImage
+        from textual_image.widget import SixelImage as _SixelImage
+        from textual_image.widget import TGPImage as _TGPImage
+
+        _override = (_os.environ.get("NYORA_TUI_IMAGE") or "").strip().lower()
+        _term = (_os.environ.get("TERM") or "").lower()
+        _prog = (_os.environ.get("TERM_PROGRAM") or "").lower()
+        _kitty_like = bool(
+            "ghostty" in _term
+            or "ghostty" in _prog
+            or _os.environ.get("GHOSTTY_RESOURCES_DIR")
+            or "kitty" in _term
+            or _os.environ.get("KITTY_WINDOW_ID")
+        )
+        _forced = {
+            "tgp": _TGPImage,
+            "sixel": _SixelImage,
+            "halfcell": _HalfcellImage,
+            "auto": _AutoImage,
+        }
+        if _override in _forced:
+            _IMAGE_CLS = _forced[_override]
+            _PROTOCOL = _override
+        elif _kitty_like:
+            _IMAGE_CLS = _TGPImage
+            _PROTOCOL = "tgp"
+        else:
+            _IMAGE_CLS = _AutoImage
+            try:
+                from textual_image.renderable import Image as _AutoRenderable
+
+                _PROTOCOL = _AutoRenderable.__module__.rsplit(".", 1)[-1]
+            except Exception:  # noqa: BLE001
+                _PROTOCOL = "auto"
+        try:
+            from textual_image._terminal import get_cell_size
+
+            cell = get_cell_size()
+            if cell and cell.width and cell.height:
+                _CELL_W, _CELL_H = int(cell.width), int(cell.height)
+        except Exception:  # noqa: BLE001 - no TTY / query unsupported
+            pass
+    except Exception:  # noqa: BLE001 - textual-image absent or no graphics support
+        _IMAGE_CLS = None
+
+    # Kitty's unicode-placeholder scheme caps an image at 297 cells tall; slice
+    # comfortably under that so full-width pages never overflow it.
+    _MAX_IMAGE_CELLS = 240
+
+    def _mount_image(container, img, cols: int) -> None:
+        """Mount ``img`` at native resolution: full content width, aspect-correct height.
+
+        On a graphics terminal the full-resolution source is scaled to the
+        content's pixel box (``cols`` × cell width) with the aspect ratio kept,
+        so no detail is thrown away by pre-resizing. Very tall pages are sliced
+        into full-width bands to stay under the Kitty placeholder height limit.
+        Without a graphics protocol we degrade to half-cell pixels.
         """
-        TITLE = "Nyora"
-        SUB_TITLE = "macOS-style Explorer • nyora.pages.dev"
+        from PIL import Image as PILImage
+
+        w, h = img.size
+        if w <= 0 or h <= 0:
+            return
+        if _IMAGE_CLS is not None:
+            scale = max(1, cols * _CELL_W) / w
+            if (h * scale) / _CELL_H <= _MAX_IMAGE_CELLS:
+                bands = [img]
+            else:
+                band_px = max(1, int(_MAX_IMAGE_CELLS * _CELL_H / scale))
+                bands = [img.crop((0, y, w, min(y + band_px, h))) for y in range(0, h, band_px)]
+            for band in bands:
+                bw, bh = band.size
+                # Explicit full-width, aspect-preserving cell height. Explicit
+                # sizing renders far more reliably than "auto" for graphics
+                # widgets mounted dynamically (auto can collapse to 0 rows).
+                cells_h = max(1, round((cols * _CELL_W) * (bh / bw) / _CELL_H))
+                widget = _IMAGE_CLS(band)
+                widget.styles.width = "100%"  # fill width → maximum pixel resolution
+                widget.styles.height = cells_h
+                container.mount(widget)
+            return
+        from rich_pixels import Pixels
+
+        target = max(10, cols - 2)
+        new_h = max(1, int((target / w) * h))
+        px = Pixels.from_image(img.resize((target, new_h), PILImage.Resampling.LANCZOS))
+        container.mount(Static(px))
+
+    # ----------------------------------------------------------------------- #
+    # Command palette (Ctrl+P) — fuzzy power-user actions.
+    # ----------------------------------------------------------------------- #
+    class NyoraCommands(Provider):
+        """Expose the app's headline actions to Textual's command palette."""
+
+        def _specs(self):
+            app: Any = self.app
+            return [
+                ("Popular", app.action_popular, "Browse popular in this source"),
+                ("Latest", app.action_latest, "Browse latest updates in this source"),
+                ("Search", app.action_focus_search, "Search the current source"),
+                ("Refresh", app.action_refresh, "Re-fetch the current view"),
+                ("Next page", app.action_next_page, "Go to the next page"),
+                ("Previous page", app.action_prev_page, "Go to the previous page"),
+                ("Toggle NSFW", app.action_toggle_nsfw, "Show or hide adult sources/results"),
+                ("Filter sources", app.action_focus_filter, "Jump to the source filter"),
+                ("Library", app.action_library, "Your synced favourites"),
+                ("History", app.action_history, "Recent reading history"),
+                ("Account / sync", app.action_account, "Sign in or out of Nyora sync"),
+                ("Color scheme", app.action_themes, "Pick a colour theme + light/dark"),
+                ("Help", app.action_help, "Show the keybinding cheat sheet"),
+            ]
+
+        async def discover(self) -> Hits:
+            for name, cb, help_text in self._specs():
+                yield DiscoveryHit(name, cb, help=help_text)
+
+        async def search(self, query: str) -> Hits:
+            matcher = self.matcher(query)
+            for name, cb, help_text in self._specs():
+                score = matcher.match(name)
+                if score > 0:
+                    yield Hit(score, matcher.highlight(name), cb, help=help_text)
+
+    # ----------------------------------------------------------------------- #
+    # Full-screen keybindings reference.
+    # ----------------------------------------------------------------------- #
+    class KeysScreen(Screen):
+        """A full-screen, two-column reference of every keybinding."""
+
+        BINDINGS = [Binding("escape,question_mark,f1,q", "close", "Close")]
         CSS = """
-        Screen { background: $surface; }
-        #sidebar { width: 35; border-right: solid $primary; height: 100%; }
-        #main { width: 1fr; height: 100%; padding: 0 1; }
-        #search-bar { height: 3; margin-bottom: 1; border-bottom: solid $primary-background; }
-        #src_filter { width: 1fr; }
-        #src_list { height: 1fr; }
-        #results { height: 1fr; }
-        #status { dock: bottom; padding: 0 1; color: $text-muted; }
+        KeysScreen { background: $background; }
+        #keys_title {
+            height: 1; padding: 0 2; background: $surface; color: $secondary;
+            text-style: bold; border-bottom: solid $panel;
+        }
+        #keys_cols { padding: 1 1 0 1; height: 1fr; }
+        .keys_col { width: 1fr; padding: 0 2; }
+        #keys_foot {
+            dock: bottom; height: 1; padding: 0 2; background: $surface;
+            color: $text-muted; border-top: solid $panel;
+        }
+        """
+
+        _LEFT = [
+            "[b $accent]Navigate[/]",
+            "  [b]j k[/] / [b]↑ ↓[/]    move in a list",
+            "  [b]g[/] / [b]G[/]        top / bottom",
+            "  [b]↓[/] / [b]esc[/]      filter box → source list",
+            "  [b]tab[/]           cycle panes",
+            "  [b]enter[/]         open selection",
+            "  [b]esc[/]           back",
+            "",
+            "[b $accent]Sections[/]",
+            "  [b]1[/]  browse / sources     [b]2[/]  library",
+            "  [b]3[/]  history              [b]a[/]  account / sync",
+            "",
+            "[b $accent]Browse[/]",
+            "  [b]/[/]  search             [b]f[/]  filter sources",
+            "  [b]p[/]  popular            [b]l[/]  latest",
+            "  [b]n[/] / [b]N[/]  next / prev page",
+            "  [b]r[/]  refresh            [b]x[/]  toggle 18+",
+            "",
+            "[b $accent]Details[/]",
+            "  [b]enter[/]  read chapter     [b]f[/]  favourite",
+            "  [b]d[/]      download chapter",
+        ]
+        _RIGHT = [
+            "[b $accent]Reader — any mode[/]",
+            "  [b]m[/]  cycle mode (webtoon/paged/paged-rtl)",
+            "  [b]f[/]  fit (width / height)",
+            "  [b]n[/] / [b]p[/]  next / previous chapter",
+            "  [b]d[/]  save chapter to Downloads",
+            "  [b]esc[/]  back",
+            "",
+            "[b $accent]Reader — webtoon[/]",
+            "  [b]j k[/] / [b]↑ ↓[/]  scroll     [b]space[/]  page down",
+            "  [b]b[/]  page up          [b]ctrl+d/u[/]  half page",
+            "  [b]g[/] / [b]G[/]  top / bottom",
+            "",
+            "[b $accent]Reader — paged / paged-rtl[/]",
+            "  [b]← →[/] (or [b]h l[/])  turn page (RTL-aware)",
+            "  [b]space[/]  next page     [b]g[/] / [b]G[/]  first / last",
+            "",
+            "[b $accent]Library[/]",
+            "  [b]tab[/] / [b]← →[/]  switch Favourites / Downloads",
+            "  [b]enter[/]  open        [b]u[/] / [b]del[/]  remove",
+            "  [b]r[/]  sync with cloud",
+            "",
+            "[b $accent]Global[/]",
+            "  [b]t[/]  theme (+[b]space[/] light/dark)   [b]ctrl+p[/]  palette",
+            "  [b]?[/] / [b]F1[/]  this screen        [b]q[/]  quit",
+        ]
+
+        def compose(self) -> ComposeResult:
+            yield Header(show_clock=True)
+            yield Static("❀ Nyora — all keybindings", id="keys_title")
+            with Horizontal(id="keys_cols"):
+                yield Static("\n".join(self._LEFT), classes="keys_col")
+                yield Static("\n".join(self._RIGHT), classes="keys_col")
+            yield Static("[dim]esc · ? · F1 · q  to close[/]", id="keys_foot")
+            yield Footer()
+
+        def action_close(self) -> None:
+            self.app.pop_screen()
+
+    # ----------------------------------------------------------------------- #
+    # Colour-scheme picker (live preview).
+    # ----------------------------------------------------------------------- #
+    class ThemePickerScreen(ModalScreen):
+        """Pick a colour scheme with live preview; enter applies, esc reverts."""
+
+        BINDINGS = [
+            Binding("escape", "cancel", "Cancel"),
+            Binding("enter", "choose", "Apply"),
+            Binding("space", "toggle_light", "Light/Dark"),
+            Binding("j,down", "cursor_down", "Down", show=False),
+            Binding("k,up", "cursor_up", "Up", show=False),
+        ]
+        CSS = """
+        ThemePickerScreen { align: center middle; }
+        #theme_box {
+            width: 44; height: auto; max-height: 90%;
+            border: round $primary; background: $surface; padding: 1 2;
+        }
+        #theme_head { padding: 0 0 1 0; }
+        #theme_list { height: auto; max-height: 20; background: $surface; }
+        #theme_list > ListItem { padding: 0 1; }
+        """
+
+        def __init__(self, schemes, current: str) -> None:
+            super().__init__()
+            self._schemes = schemes
+            self._original = current
+            self._light = _is_light(current)
+
+        def compose(self) -> ComposeResult:
+            with Vertical(id="theme_box"):
+                yield Static("", id="theme_head")
+                items = []
+                start = 0
+                cur_scheme = _scheme_of(self._original)
+                for i, (sid, name, light, dark) in enumerate(self._schemes):
+                    if sid == cur_scheme:
+                        start = i
+                    # dual swatch: dark ● + light ● so both variants are visible
+                    items.append(ListItem(Label(f"[{dark}]●[/][{light}]●[/]  {name}")))
+                yield ListView(*items, id="theme_list", initial_index=start)
+
+        def on_mount(self) -> None:
+            self._render_head()
+
+        def _render_head(self) -> None:
+            appear = "Light ☀" if self._light else "Dark ☾"
+            self.query_one("#theme_head", Static).update(
+                f"[b $accent]❀ Colour scheme[/]   [dim]·[/]  [b]{appear}[/]\n"
+                "[dim]↑↓ preview · space light/dark · enter apply · esc cancel[/]"
+            )
+
+        def action_cursor_down(self) -> None:
+            self.query_one("#theme_list", ListView).action_cursor_down()
+
+        def action_cursor_up(self) -> None:
+            self.query_one("#theme_list", ListView).action_cursor_up()
+
+        def action_toggle_light(self) -> None:
+            self._light = not self._light
+            self._render_head()
+            self._preview()
+
+        def _preview(self) -> None:
+            idx = self.query_one("#theme_list", ListView).index
+            if idx is not None and 0 <= idx < len(self._schemes):
+                self.app.theme = _theme_name(self._schemes[idx][0], self._light)
+
+        def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+            self._preview()
+
+        def on_list_view_selected(self, event: ListView.Selected) -> None:
+            # ListView consumes Enter to emit Selected, so apply from here.
+            self.action_choose()
+
+        def action_choose(self) -> None:
+            app: Any = self.app
+            idx = self.query_one("#theme_list", ListView).index
+            if idx is not None and 0 <= idx < len(self._schemes):
+                chosen = _theme_name(self._schemes[idx][0], self._light)
+                app.theme = chosen
+                app._persist_theme(chosen)
+            app.pop_screen()
+            app._on_theme_changed(app.theme)
+
+        def action_cancel(self) -> None:
+            app: Any = self.app
+            app.theme = self._original
+            app.pop_screen()
+            app._on_theme_changed(app.theme)
+
+    # ----------------------------------------------------------------------- #
+    # Welcome / sign-in (branded, guest-optional — mirrors nyora-web).
+    # ----------------------------------------------------------------------- #
+    class WelcomeScreen(Screen):
+        """First-run branded welcome: sign in, create an account, or read as guest."""
+
+        BINDINGS = [Binding("escape", "guest", "Continue as guest")]
+        CSS = """
+        WelcomeScreen { align: center middle; background: $background; }
+        #w_box {
+            width: 78; height: auto; max-height: 96%;
+            border: round $primary; background: $surface; padding: 2 4;
+        }
+        #w_form Input { margin-top: 1; }
+        #w_msg { min-height: 1; margin-top: 1; color: $text-muted; }
+        #w_actions { height: 3; margin-top: 1; }
+        #w_actions Button { margin-right: 2; }
+        """
+
+        def __init__(self, sync) -> None:
+            super().__init__()
+            self._sync = sync
+
+        def compose(self) -> ComposeResult:
+            with Vertical(id="w_box"):
+                yield Static("[b $accent]NYORA[/]   [dim]破壊[/]")
+                yield Static("[$secondary]Manga, anywhere the night takes you[/]")
+                yield Static("")
+                yield Static("[b]Read like the world can wait.[/]")
+                yield Static(
+                    "[dim]Nyora pulls hundreds of sources into one quiet shelf and remembers\n"
+                    "exactly where you stopped — on every device. Sign in to sync and back it\n"
+                    "up, or just start reading.[/]"
+                )
+                yield Static("")
+                yield Static(
+                    "[$secondary]Hundreds of sources   ·   Picks up on every device   ·   "
+                    "No ads, ever[/]"
+                )
+                yield Static("")
+                yield Static("[b]Start reading[/]")
+                with Vertical(id="w_form"):
+                    yield Input(placeholder="Email", id="w_email")
+                    yield Input(placeholder="Password", password=True, id="w_pw")
+                yield Static("", id="w_msg")
+                with Horizontal(id="w_actions"):
+                    yield Button("Sign in", id="w_signin", variant="primary")
+                    yield Button("Create account", id="w_register")
+                    yield Button("Continue as guest", id="w_guest")
+                yield Static(
+                    "[dim]No account needed — go in as a guest and sync whenever you like.[/]"
+                )
+
+        def on_mount(self) -> None:
+            self.query_one("#w_email", Input).focus()
+
+        def _creds(self) -> tuple[str, str]:
+            return (
+                self.query_one("#w_email", Input).value.strip(),
+                self.query_one("#w_pw", Input).value.strip(),
+            )
+
+        def _msg(self, text: str) -> None:
+            self.query_one("#w_msg", Static).update(text)
+
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            self._do_signin()
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "w_signin":
+                self._do_signin()
+            elif event.button.id == "w_register":
+                self._do_register()
+            else:
+                self.action_guest()
+
+        def _finish(self) -> None:
+            # Move on to the preferences step; onboarding completes there.
+            self.app.pop_screen()
+            self.app.push_screen(PreferencesScreen(self._sync))
+
+        def action_guest(self) -> None:
+            self._finish()
+
+        def _do_signin(self) -> None:
+            email, pw = self._creds()
+            if not email or not pw:
+                self._msg("[warning]Enter your email and password.[/]")
+                return
+            self._msg("[dim]Signing in…[/]")
+            try:
+                self._sync.sign_in(email, pw)
+                self._msg("[success]Welcome back.[/]")
+                self._finish()
+            except Exception as exc:  # noqa: BLE001
+                self._msg(f"[error]Sign-in failed: {_esc(str(exc))}[/]")
+
+        def _do_register(self) -> None:
+            email, pw = self._creds()
+            if not email or not pw:
+                self._msg("[warning]Enter your email and password.[/]")
+                return
+            self._msg("[dim]Creating your account…[/]")
+            try:
+                self._sync.register(email, pw)
+                if not self._sync.is_signed_in:
+                    self._sync.sign_in(email, pw)
+                self._msg("[success]Account ready.[/]")
+                self._finish()
+            except Exception as exc:  # noqa: BLE001
+                self._msg(f"[error]Sign-up failed: {_esc(str(exc))}[/]")
+
+    # ----------------------------------------------------------------------- #
+    # Set up your shelf — languages + content rating (mirrors nyora-web).
+    # ----------------------------------------------------------------------- #
+    class PreferencesScreen(Screen):
+        """One-time setup: pick languages and 18+ preference, then start reading."""
+
+        BINDINGS = [Binding("enter", "start", "Start reading")]
+        CSS = """
+        PreferencesScreen { align: center middle; background: $background; }
+        #p_box {
+            width: 74; height: auto; max-height: 96%;
+            border: round $primary; background: $surface; padding: 2 4;
+        }
+        #p_nsfw_row { height: 3; margin: 1 0 0 0; }
+        #p_nsfw_row Static { padding-top: 1; }
+        #p_langs { height: auto; max-height: 14; margin-top: 1; border: round $panel; }
+        #p_actions { height: 3; margin-top: 1; }
+        """
+
+        def __init__(self, sync) -> None:
+            super().__init__()
+            self._sync = sync
+            self._populated = False
+
+        def compose(self) -> ComposeResult:
+            from textual.widgets import SelectionList, Switch
+
+            with Vertical(id="p_box"):
+                yield Static("[$secondary]You’re in[/]")
+                yield Static("[b]Set up your shelf[/]")
+                yield Static(
+                    "[dim]Choose your languages and content preference — we’ll show the\n"
+                    "matching sources. You can change any of this later.[/]"
+                )
+                yield Static("")
+                with Horizontal(id="p_nsfw_row"):
+                    yield Switch(value=False, id="p_nsfw_sw")
+                    yield Static("  Show 18+ sources")
+                yield Static("[dim]Include adult-only sources in browse & search.[/]")
+                yield Static("")
+                yield Static(
+                    "[$secondary]Languages[/]   [dim]· space to toggle · none = all languages[/]"
+                )
+                yield SelectionList(id="p_langs")
+                with Horizontal(id="p_actions"):
+                    yield Button("Start reading", id="p_start", variant="primary")
+
+        def on_mount(self) -> None:
+            self._timer = self.set_interval(0.3, self._populate)
+            self._populate()
+
+        def _populate(self) -> None:
+            from collections import Counter
+
+            from textual.widgets import SelectionList
+            from textual.widgets.selection_list import Selection
+
+            if self._populated:
+                return
+            srcs = getattr(self.app, "_sources", [])
+            if not srcs:
+                return
+            sl = self.query_one("#p_langs", SelectionList)
+            counts = Counter((s.lang or "").strip().lower() for s in srcs)
+            for code in sorted(counts, key=_lang_sort_key):
+                sl.add_option(Selection(f"{_lang_display(code)}   ({counts[code]})", code, False))
+            self._populated = True
+            self._timer.stop()
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            self.action_start()
+
+        def action_start(self) -> None:
+            from textual.widgets import SelectionList, Switch
+
+            from nyora.config import set_languages, set_onboarded, set_show_nsfw
+
+            show = self.query_one("#p_nsfw_sw", Switch).value
+            langs = [str(v) for v in self.query_one("#p_langs", SelectionList).selected]
+            set_show_nsfw(show)
+            set_languages(langs)
+            set_onboarded(True)
+            app: Any = self.app
+            app._apply_content_prefs(show, set(langs))
+            self.app.pop_screen()
+
+    # ----------------------------------------------------------------------- #
+    # Library (synced favourites).
+    # ----------------------------------------------------------------------- #
+    class LibraryScreen(Screen):
+        """Library with two tabs — Favourites and Downloads. Local-first; when
+        signed in, favourites also sync to the cloud."""
+
+        BINDINGS = [
+            Binding("escape,b", "app.pop_screen", "Back"),
+            Binding("q", "app.quit", "Quit"),
+            Binding("tab,right,l", "next_tab", "Switch tab"),
+            Binding("left,h", "next_tab", "Tab", show=False),
+            Binding("r", "reload", "Sync"),
+            Binding("u,delete", "remove", "Remove"),
+            Binding("j,down", "cursor_down", "Down", show=False),
+            Binding("k,up", "cursor_up", "Up", show=False),
+            Binding("g", "top", "Top", show=False),
+            Binding("G", "bottom", "Bottom", show=False),
+        ]
+        CSS = """
+        #lib_tabs {
+            height: 1; padding: 0 2; background: $surface; border-bottom: solid $panel;
+        }
+        #lib_table { height: 1fr; padding: 0 1; }
+        #lib_msg { padding: 2 3; }
+        """
+
+        def __init__(self, client, sync, sources, lib, dl) -> None:
+            super().__init__()
+            self._client = client
+            self._sync = sync
+            self._lib = lib
+            self._dl = dl
+            self._by_id = {s.id: s for s in sources}
+            self._tab = "fav"
+            self._items: list = []
+
+        def compose(self) -> ComposeResult:
+            yield Header(show_clock=True)
+            yield Static("", id="lib_tabs")
+            yield DataTable(id="lib_table", cursor_type="row", zebra_stripes=True)
+            yield Static("", id="lib_msg")
+            yield Footer()
+
+        def on_mount(self) -> None:
+            self._render_tabs()
+            self._build()
+            if self._sync.is_signed_in:
+                self._sync_cloud()
+
+        def _render_tabs(self) -> None:
+            def pill(tab: str, label: str, action: str) -> str:
+                style = "b $background on $primary" if tab == self._tab else "$text-muted"
+                return f"[@click={action}][{style}] {label} [/][/]"
+
+            n_fav = len(self._lib.favourites())
+            n_dl = len(self._dl.entries())
+            self.query_one("#lib_tabs", Static).update(
+                f"{pill('fav', f'FAVOURITES · {n_fav}', 'tab_fav')}   "
+                f"{pill('dl', f'DOWNLOADS · {n_dl}', 'tab_dl')}"
+            )
+
+        def action_tab_fav(self) -> None:
+            self._tab = "fav"
+            self._render_tabs()
+            self._build()
+
+        def action_tab_dl(self) -> None:
+            self._tab = "dl"
+            self._render_tabs()
+            self._build()
+
+        def action_next_tab(self) -> None:
+            (self.action_tab_dl if self._tab == "fav" else self.action_tab_fav)()
+
+        def _build(self) -> None:
+            table = self.query_one("#lib_table", DataTable)
+            table.clear(columns=True)
+            msg = self.query_one("#lib_msg", Static)
+            if self._tab == "fav":
+                table.add_columns("title", "source")
+                self._items = self._lib.favourites()
+                if not self._items:
+                    msg.update("[dim]No favourites yet. Open a title and press f to add it.[/]")
+                    return
+                msg.update("")
+                for i, it in enumerate(self._items):
+                    src = self._by_id.get(it.get("source", ""))
+                    name = src.name if src else (it.get("source") or "—")
+                    table.add_row(_esc(_truncate(it.get("title", ""), 58)), _esc(name), key=str(i))
+            else:
+                table.add_columns("manga", "chapter", "pages", "when")
+                self._items = self._dl.entries()
+                if not self._items:
+                    msg.update("[dim]No downloads yet. Press d on a chapter to download it.[/]")
+                    return
+                msg.update("")
+                for i, it in enumerate(self._items):
+                    table.add_row(
+                        _esc(_truncate(it.get("manga_title", ""), 34)),
+                        _esc(_truncate(it.get("chapter_title", ""), 26)),
+                        str(it.get("pages", 0)),
+                        _esc(_hist_when(it.get("downloaded_at", ""))),
+                        key=str(i),
+                    )
+            table.focus()
+
+        def action_reload(self) -> None:
+            if self._tab == "fav" and self._sync.is_signed_in:
+                self.query_one("#lib_msg", Static).update("[dim]syncing with cloud…[/]")
+                self._sync_cloud()
+            else:
+                self._build()
+
+        @work(exclusive=True, thread=True, group="libsync")
+        def _sync_cloud(self) -> None:
+            rows, _err = _safe(self._sync.library)
+            self.app.call_from_thread(self._merged, rows or [])
+
+        def _merged(self, rows) -> None:
+            self._lib.merge_cloud_favourites(rows)
+            self._render_tabs()
+            self._build()
+
+        def action_remove(self) -> None:
+            row = self._t().cursor_row
+            if not (0 <= row < len(self._items)):
+                return
+            it = self._items[row]
+            if self._tab == "fav":
+                mid = it.get("manga_id", "")
+                self._lib.remove_favourite(mid)
+                if self._sync.is_signed_in:
+                    _safe(self._sync.unfavourite, mid)
+                self.notify("Removed from library.", severity="information")
+            self._render_tabs()
+            self._build()
+
+        def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+            idx = int(event.row_key.value) if event.row_key.value is not None else -1
+            if not (0 <= idx < len(self._items)):
+                return
+            it = self._items[idx]
+            if self._tab == "fav":
+                self._open_details(it)
+            else:
+                self._open_download(it)
+
+        def _open_details(self, it) -> None:
+            from nyora.models import Manga
+
+            src = self._by_id.get(it.get("source", ""))
+            if src is None:
+                self.notify("That source isn't installed here.", severity="warning")
+                return
+            manga = Manga(id=it.get("manga_id", ""), title=it.get("title", ""),
+                          url=it.get("url", ""), cover_url=it.get("cover", ""))
+            self.app.push_screen(DetailsScreen(self._client, self._sync, src, manga))
+
+        def _open_download(self, it) -> None:
+            import types
+
+            chapter = types.SimpleNamespace(
+                title=it.get("chapter_title", ""), id=it.get("chapter_id", ""),
+                url="", branch=None, number=0,
+            )
+            self.app.push_screen(
+                PagesScreen(None, None, None, None, chapter, local_cbz=it.get("file", ""))
+            )
+
+        def _t(self):
+            return self.query_one("#lib_table", DataTable)
+
+        def action_cursor_down(self) -> None:
+            self._t().action_cursor_down()
+
+        def action_cursor_up(self) -> None:
+            self._t().action_cursor_up()
+
+        def action_top(self) -> None:
+            self._t().move_cursor(row=0)
+
+        def action_bottom(self) -> None:
+            self._t().move_cursor(row=self._t().row_count - 1)
+
+    # ----------------------------------------------------------------------- #
+    # History (local reading progress; also synced to the cloud when signed in).
+    # ----------------------------------------------------------------------- #
+    class HistoryScreen(Screen):
+        """Recent reading history; enter re-opens the title."""
+
+        BINDINGS = [
+            Binding("escape,b", "app.pop_screen", "Back"),
+            Binding("q", "app.quit", "Quit"),
+            Binding("r", "reload", "Refresh"),
+            Binding("j,down", "cursor_down", "Down", show=False),
+            Binding("k,up", "cursor_up", "Up", show=False),
+            Binding("g", "top", "Top", show=False),
+            Binding("G", "bottom", "Bottom", show=False),
+        ]
+        CSS = """
+        #hist_head {
+            height: 1; padding: 0 2; background: $surface; color: $secondary;
+            text-style: bold; border-bottom: solid $panel;
+        }
+        #hist_table { height: 1fr; padding: 0 1; }
+        #hist_msg { padding: 2 3; }
+        """
+
+        def __init__(self, client, sync, sources, lib, dl) -> None:
+            super().__init__()
+            self._client = client
+            self._sync = sync
+            self._lib = lib
+            self._by_id = {s.id: s for s in sources}
+            self._items: list = []
+
+        def compose(self) -> ComposeResult:
+            yield Header(show_clock=True)
+            yield Static("History", id="hist_head")
+            yield DataTable(id="hist_table", cursor_type="row", zebra_stripes=True)
+            yield Static("", id="hist_msg")
+            yield Footer()
+
+        def on_mount(self) -> None:
+            self.query_one("#hist_table", DataTable).add_columns("title", "chapter", "%", "when")
+            self.action_reload()
+
+        def action_reload(self) -> None:
+            msg = self.query_one("#hist_msg", Static)
+            table = self.query_one("#hist_table", DataTable)
+            table.clear()
+            self._items = self._lib.history()
+            if not self._items:
+                msg.update("[dim]No history yet. Read a chapter and it shows up here.[/]")
+                self.query_one("#hist_head", Static).update("History")
+                return
+            msg.update("")
+            for i, it in enumerate(self._items):
+                pct = int(float(it.get("percent", 0.0) or 0.0) * 100)
+                table.add_row(
+                    _esc(_truncate(it.get("title", ""), 44)),
+                    _esc(_truncate(it.get("chapter_title", "") or "—", 26)),
+                    f"{pct}%",
+                    _esc(_hist_when(it.get("updated_at", ""))),
+                    key=str(i),
+                )
+            self.query_one("#hist_head", Static).update(f"History · {len(self._items)}")
+            table.focus()
+
+        def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+            idx = int(event.row_key.value) if event.row_key.value is not None else -1
+            if not (0 <= idx < len(self._items)):
+                return
+            from nyora.models import Manga
+
+            it = self._items[idx]
+            src = self._by_id.get(it.get("source", ""))
+            if src is None:
+                self.notify("That source isn't installed here.", severity="warning")
+                return
+            manga = Manga(id=it.get("manga_id", ""), title=it.get("title", ""),
+                          url=it.get("url", ""), cover_url=it.get("cover", ""))
+            self.app.push_screen(DetailsScreen(self._client, self._sync, src, manga))
+
+        def _t(self):
+            return self.query_one("#hist_table", DataTable)
+
+        def action_cursor_down(self) -> None:
+            self._t().action_cursor_down()
+
+        def action_cursor_up(self) -> None:
+            self._t().action_cursor_up()
+
+        def action_top(self) -> None:
+            self._t().move_cursor(row=0)
+
+        def action_bottom(self) -> None:
+            self._t().move_cursor(row=self._t().row_count - 1)
+
+    # ----------------------------------------------------------------------- #
+    # Root browse screen.
+    # ----------------------------------------------------------------------- #
+    class NyoraTui(App):
+        """Nerd-grade terminal reader: dense tables, vim keys, live telemetry."""
+
+        TITLE = "nyora"
+        SUB_TITLE = "terminal reader"
+        COMMANDS = App.COMMANDS | {NyoraCommands}
+        CSS = """
+        Screen { background: $background; }
+        #sidebar { width: 36; height: 100%; background: $surface; border-right: solid $panel; }
+        #src_filter {
+            height: 3; margin: 1 1 0 1; padding: 0 1;
+            border: round $panel; background: $background; color: $foreground;
+        }
+        #src_filter:focus { border: round $primary; }
+        #src_table { height: 1fr; padding: 0 1; background: $surface; }
+        #main { width: 1fr; height: 100%; }
+        #modebar { height: 1; padding: 0 2; color: $text-muted; }
+        #q {
+            height: 3; margin: 0 2 1 2; padding: 0 1;
+            border: round $panel; background: $surface; color: $foreground;
+        }
+        #q:focus { border: round $primary; }
+        #welcome { height: 1fr; padding: 2 4; color: $text-muted; }
+        #results { height: 1fr; padding: 0 1; display: none; }
+        #statusbar {
+            dock: bottom; height: 1; padding: 0 2;
+            background: $surface; color: $text-muted; border-top: solid $panel;
+        }
+        DataTable { background: $surface; }
+        DataTable > .datatable--header {
+            background: $surface; color: $secondary; text-style: bold;
+        }
+        DataTable:focus > .datatable--cursor {
+            background: $primary; color: $background; text-style: bold;
+        }
+        DataTable > .datatable--cursor { background: $panel; color: $foreground; }
         """
         BINDINGS = [
             Binding("q", "quit", "Quit"),
-            Binding("escape", "focus_sidebar", "Focus Sources", show=False),
-            Binding("ctrl+s", "focus_search", "Search"),
-            Binding("ctrl+f", "focus_filter", "Filter"),
+            Binding("slash", "focus_search", "Search", show=False),
+            Binding("f", "focus_filter", "Filter", show=False),
+            Binding("p", "popular", "Popular", show=False),
+            Binding("l", "latest", "Latest", show=False),
+            Binding("n", "next_page", "Next", show=False),
+            Binding("N", "prev_page", "Prev", show=False),
+            Binding("r", "refresh", "Refresh", show=False),
+            Binding("x", "toggle_nsfw", "NSFW", show=False),
+            Binding("1", "focus_sidebar", "Browse", show=False),
+            Binding("2", "library", "Library"),
+            Binding("3", "history", "History"),
+            Binding("a", "account", "Account", show=False),
+            Binding("t", "themes", "Theme", show=False),
+            Binding("question_mark,f1", "help", "Help"),
+            Binding("escape", "focus_sidebar", "Sources", show=False),
+            Binding("j", "cursor_down", "Down", show=False),
+            Binding("k", "cursor_up", "Up", show=False),
+            Binding("g", "cursor_top", "Top", show=False),
+            Binding("G", "cursor_bottom", "Bottom", show=False),
         ]
 
         def __init__(self) -> None:
             super().__init__()
             self._client = Nyora()
-            self._sources = []
-            self._current_source = None
+            self._sync = TuiSync()
+            self._lib = LocalLibrary()
+            self._dl = Downloads()
+            self._sources: list[Source] = []
+            self._src_view: list[Source] = []
+            # visual rows, each ("hdr", lang) for a group header or ("src", idx) for a source
+            self._src_rows: list[tuple[str, object]] = []
+            self._results: list = []
+            self._current_source: Source | None = None
+            self._mode = "popular"
             self._page = 1
             self._query = ""
+            self._hide_nsfw = False
+            self._languages: set[str] = set()
+            self._last_ms = 0.0
+            self._loading = False
+            self._spin = 0
+            self._status_msg = "select a source"
 
         def compose(self) -> ComposeResult:
-            yield Header(show_clock=False)
+            yield Header(show_clock=True)
             with Horizontal():
                 with Vertical(id="sidebar"):
-                    yield Input(placeholder="Filter sources... (ctrl+f)", id="src_filter")
-                    yield ListView(id="src_list")
-                    yield Static("", id="src_status")
+                    yield Input(placeholder="filter sources  (↓ / esc → list)", id="src_filter")
+                    yield DataTable(id="src_table", cursor_type="row", zebra_stripes=True)
                 with Vertical(id="main"):
-                    with Horizontal(id="search-bar"):
-                        yield Input(placeholder="Search catalogue... (ctrl+s, blank=popular)", id="q")
-                    yield ListView(id="results")
-                    yield Static("Select a source to browse", id="status")
+                    yield Static("", id="modebar")
+                    yield Input(placeholder="search  (/) — blank = popular", id="q")
+                    yield Static(_WELCOME, id="welcome")
+                    yield DataTable(id="results", cursor_type="row", zebra_stripes=True)
+            yield Static("", id="statusbar")
             yield Footer()
 
-        def action_focus_sidebar(self) -> None:
-            self.query_one("#src_list", ListView).focus()
+        def _reveal_results(self) -> None:
+            """Swap the welcome panel for the results table on first browse."""
+            self.query_one("#welcome", Static).display = False
+            self.query_one("#results", DataTable).display = True
 
-        def action_focus_search(self) -> None:
-            self.query_one("#q", Input).focus()
-
-        def action_focus_filter(self) -> None:
-            self.query_one("#src_filter", Input).focus()
-
+        # -- lifecycle ----------------------------------------------------- #
         def on_mount(self) -> None:
+            for theme in _THEMES.values():
+                self.register_theme(theme)
+            from nyora.config import read_theme_from_config
+
+            saved = read_theme_from_config()
+            self.theme = saved if saved in _THEMES else _DEFAULT_THEME
+            # Drop Textual's stock themes so the command palette only offers ours.
+            for name in list(self.available_themes):
+                if name not in _THEMES:
+                    try:
+                        self.unregister_theme(name)
+                    except Exception:  # noqa: BLE001
+                        pass
+            self.watch(self, "theme", self._on_theme_changed, init=False)
+            src = self.query_one("#src_table", DataTable)
+            src.add_columns("source", " ")
+            res = self.query_one("#results", DataTable)
+            res.add_columns("#", "title", "rating", "state", "tags", "!")
+            from nyora.config import read_languages, read_onboarded, read_show_nsfw
+
+            self._hide_nsfw = not read_show_nsfw()
+            self._languages = set(read_languages())
+            self._render_modebar()
+            self.set_interval(0.09, self._tick)
             self._load_sources()
             self.query_one("#src_filter", Input).focus()
+            if not read_onboarded():
+                self.push_screen(WelcomeScreen(self._sync))
+
+        # -- theming ------------------------------------------------------- #
+        def _cell_colors(self) -> tuple[str, str, str]:
+            """(label, accent, nsfw) hex for DataTable cells, from the active theme."""
+            th = self.current_theme
+            return (th.secondary or "#C7A6D9", th.primary or "#FFB1C8", th.error or "#EB7D9B")
+
+        def _persist_theme(self, theme_id: str) -> None:
+            try:
+                from nyora.config import set_config_theme
+
+                set_config_theme(theme_id)
+            except Exception:  # noqa: BLE001 - persistence is best-effort
+                pass
+
+        def _on_theme_changed(self, _theme: str) -> None:
+            # Recolor themed table cells (Rich hex) to match the new palette.
+            try:
+                if self.query_one("#src_table", DataTable).row_count:
+                    self._render_sources(self.query_one("#src_filter", Input).value)
+                if self._results:
+                    self._fill_results_table()
+            except Exception:  # noqa: BLE001
+                pass
+
+        def action_themes(self) -> None:
+            self.push_screen(ThemePickerScreen(_SCHEMES, self.theme))
 
         def on_unmount(self) -> None:
             try:
@@ -215,700 +1283,1127 @@ def _run_textual() -> bool:
             except Exception:
                 pass
 
+        # -- telemetry ----------------------------------------------------- #
+        def _tick(self) -> None:
+            if self._loading:
+                self._spin = (self._spin + 1) % len(SPINNER)
+            self._render_statusbar()
+
+        def _render_modebar(self) -> None:
+            def pill(mode: str, label: str, action: str) -> str:
+                style = "b $background on $primary" if mode == self._mode else "$text-muted"
+                # @click makes the pill a mouse target that fires the app action.
+                return f"[@click=app.{action}][{style}] {label} [/][/]"
+
+            src = _esc(self._current_source.name) if self._current_source else "no source"
+            nsfw = "  [warning]· 18+ hidden[/]" if self._hide_nsfw else ""
+            pills = "  ".join(
+                (
+                    pill("popular", "POPULAR", "popular"),
+                    pill("latest", "LATEST", "latest"),
+                    pill("search", "SEARCH", "focus_search"),
+                )
+            )
+            try:
+                self.query_one("#modebar", Static).update(f"{pills}   [dim]›[/]  [b]{src}[/]{nsfw}")
+            except Exception:  # noqa: BLE001 - modebar not mounted yet
+                pass
+
+        def _render_statusbar(self) -> None:
+            spin = f"[$primary]{SPINNER[self._spin]}[/] " if self._loading else ""
+            parts = [f"{spin}{self._status_msg}"]
+            if self._current_source is not None:
+                s = self._current_source
+                parts.append(f"[$secondary]{_esc(s.id)}[/]")
+                if s.lang:
+                    parts.append(_lang_display(s.lang))
+            parts.append(f"pg {self._page}")
+            if self._last_ms:
+                parts.append(f"[$success]{self._last_ms:.0f}ms[/]")
+            who = self._sync.email if self._sync.is_signed_in else "guest"
+            parts.append(f"[$primary]{_esc(who or 'guest')}[/]")
+            try:
+                self.query_one("#statusbar", Static).update("  [dim]·[/]  ".join(parts))
+            except Exception:  # noqa: BLE001 - status bar not mounted yet / recomposing
+                pass
+
+        def _set_status(self, msg: str, *, loading: bool = False) -> None:
+            self._status_msg = msg
+            self._loading = loading
+            self._render_statusbar()
+
+        # -- sources ------------------------------------------------------- #
         def _load_sources(self) -> None:
-            sources, err = _safe(_list_sources, self._client)
-            status = self.query_one("#src_status", Static)
+            self._set_status("loading sources", loading=True)
+            self._load_sources_worker()
+
+        @work(exclusive=True, thread=True, group="sources")
+        def _load_sources_worker(self) -> None:
+            sources, err, ms = _timed(_list_sources, self._client)
+            self.call_from_thread(self._on_sources, sources, err, ms)
+
+        def _on_sources(self, sources, err, ms: float) -> None:
+            self._last_ms = ms
             if err:
-                status.update(f"[red]Failed: {err}[/red]")
+                self._set_status(f"[error]sources failed: {_esc(str(err))}[/]")
                 return
             self._sources = sources or []
-            status.update(f"{len(self._sources)} sources")
-            self._render_sources(self._sources)
+            base = getattr(self._client, "base_url", "")
+            self.sub_title = f"{len(self._sources)} sources · bundled engine · {base}"
+            self._set_status(f"{len(self._sources)} sources ready")
+            self._render_sources()
 
-        def _render_sources(self, sources) -> None:
-            lv = self.query_one("#src_list", ListView)
-            lv.clear()
-            for s in sources[:500]:
-                lang = f" [{s.lang}]" if s.lang else ""
-                nsfw = " [red]18+[/red]" if s.is_nsfw else ""
-                lv.append(_Row(f"{s.name}{lang}{nsfw}\n[dim]{s.id}[/dim]", s))
+        def _visible_sources(self) -> list:
+            src = self._sources
+            if self._languages:
+                src = [s for s in src if (s.lang or "").strip().lower() in self._languages]
+            if self._hide_nsfw:
+                src = [s for s in src if not s.is_nsfw]
+            return src
 
+        def _apply_content_prefs(self, show_nsfw: bool, languages: set[str]) -> None:
+            """Apply onboarding content prefs (18+ + language filter) live."""
+            self._hide_nsfw = not show_nsfw
+            self._languages = set(languages)
+            self._render_sources(self.query_one("#src_filter", Input).value)
+            self._render_modebar()
+
+        def _render_sources(self, query: str = "") -> None:
+            from collections import Counter
+
+            table = self.query_one("#src_table", DataTable)
+            table.clear()
+            filtered = _filter_sources(self._visible_sources(), query)
+            # Divide by language: sort into language blocks (English/Multi first,
+            # unknown last), each introduced by a group header row.
+            ordered = sorted(
+                filtered, key=lambda s: (_lang_sort_key(s.lang), (s.name or s.id).casefold())
+            )
+            self._src_view = ordered
+            self._src_rows = []
+            counts = Counter((s.lang or "").strip().lower() for s in ordered)
+            label_c, accent_c, nsfw_c = self._cell_colors()
+            current: object = object()
+            for i, s in enumerate(ordered):
+                lang = (s.lang or "").strip().lower()
+                if lang != current:
+                    current = lang
+                    # DataTable cells render via Rich markup (no Textual $vars).
+                    table.add_row(
+                        f"[bold {label_c}]▸ {_esc(_lang_display(s.lang))}[/]",
+                        f"[dim]{counts[lang]}[/]",
+                        key=f"hdr:{lang}",
+                    )
+                    self._src_rows.append(("hdr", lang))
+                star = f" [{accent_c}]★[/]" if s.is_pinned else ""
+                name = _esc(_truncate(s.name, 26))
+                flag = ""
+                if s.is_nsfw:
+                    name = f"[{nsfw_c}]{name}[/]"  # 18+ sources always show red
+                    flag = f"[{nsfw_c}]18+[/]"
+                table.add_row(f"  {name}{star}", flag, key=f"src:{i}")
+                self._src_rows.append(("src", i))
+
+        # -- results ------------------------------------------------------- #
+        def _fetch(self) -> None:
+            if self._current_source is None:
+                self._set_status("[warning]select a source first[/]")
+                return
+            self._reveal_results()
+            self._render_modebar()
+            self.query_one("#results", DataTable).clear()
+            self._set_status(f"{self._mode} · {_esc(self._current_source.name)}", loading=True)
+            self._fetch_worker(self._current_source.id, self._mode, self._query, self._page)
+
+        @work(exclusive=True, thread=True, group="results")
+        def _fetch_worker(self, source_id: str, mode: str, query: str, page: int) -> None:
+            page_obj, err, ms = _timed(_fetch_browse, self._client, source_id, mode, query, page)
+            self.call_from_thread(self._on_results, page_obj, err, ms)
+
+        def _on_results(self, page_obj, err, ms: float) -> None:
+            self._last_ms = ms
+            table = self.query_one("#results", DataTable)
+            table.clear()
+            if err:
+                self._set_status(f"[error]{_esc(str(err))}[/]")
+                return
+            rows = page_obj.entries if page_obj else []
+            if self._hide_nsfw:
+                rows = [m for m in rows if not m.is_nsfw]
+            self._results = rows
+            self._fill_results_table()
+            more = " · [dim]n→more[/]" if page_obj and page_obj.has_next_page else ""
+            self._set_status(f"{len(rows)} results{more}")
+            if rows:
+                self.query_one("#results", DataTable).focus()
+
+        def _fill_results_table(self) -> None:
+            """(Re)build the results table from ``self._results`` in the active palette."""
+            table = self.query_one("#results", DataTable)
+            table.clear()
+            _label, _accent, nsfw_c = self._cell_colors()
+            for i, m in enumerate(self._results):
+                tags = ", ".join(t.get("title", "") for t in m.tags[:3] if t.get("title"))
+                flag = f"[{nsfw_c}]18[/]" if m.is_nsfw else ""
+                table.add_row(
+                    str(i + 1),
+                    _esc(_truncate(m.title, 46)),
+                    _rating_badge(m.rating),
+                    _esc(_truncate(m.state or "—", 10)),
+                    _esc(_truncate(tags, 26)),
+                    flag,
+                    key=str(i),
+                )
+
+        # -- events -------------------------------------------------------- #
         def on_input_changed(self, event: Input.Changed) -> None:
             if event.input.id == "src_filter":
-                self._render_sources(_filter_sources(self._sources, event.value))
+                self._render_sources(event.value)
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
             if event.input.id == "src_filter":
-                lv = self.query_one("#src_list", ListView)
-                if lv.children:
-                    lv.focus()
+                self.query_one("#src_table", DataTable).focus()
             elif event.input.id == "q":
                 self._query = event.value
+                self._mode = "search" if event.value.strip() else "popular"
                 self._page = 1
-                if self._current_source:
-                    self._fetch_results()
+                self._fetch()
 
-        def on_list_view_selected(self, event: ListView.Selected) -> None:
-            lv = event.control
-            payload = getattr(event.item, "payload", None)
-            if lv.id == "src_list" and payload:
-                self._current_source = payload
-                self._query = ""
-                self._page = 1
-                self.query_one("#q", Input).value = ""
-                self._fetch_results()
-                self.query_one("#q", Input).focus()
-            elif lv.id == "results" and payload:
-                self.push_screen(DetailsScreen(self._client, self._current_source, payload))
-
-        def _fetch_results(self) -> None:
-            self.query_one("#status", Static).update("Loading...")
-            self.query_one("#results", ListView).clear()
-            self.run_worker(self._do_fetch, exclusive=True, thread=True, name="results")
-
-        def _do_fetch(self):
-            return _safe(_fetch_results, self._client, self._current_source.id, self._query, self._page)
-
-        def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
-            if event.worker.name != "results" or event.state != WorkerState.SUCCESS:
+        def on_key(self, event) -> None:
+            # Pressing ↓ in the filter box drops focus into the source list (the
+            # intuitive move); the search box likewise drops into results.
+            if event.key != "down":
                 return
-            page, err = event.worker.result
-            status = self.query_one("#status", Static)
-            lv = self.query_one("#results", ListView)
-            lv.clear()
-            if err:
-                status.update(f"[red]Error: {err}[/red]")
-                return
-            for m in page.entries:
-                tags = ", ".join(t.get("title", "") for t in m.tags[:3] if t.get("title"))
-                meta = f"[dim]{tags}[/dim]" if tags else ""
-                lv.append(_Row(f"[b]{m.title}[/b]\n{meta}", m))
-            status.update(f"Page {self._page} - {len(page.entries)} entries")
+            focused = self.focused
+            if focused is self.query_one("#src_filter", Input):
+                self.query_one("#src_table", DataTable).focus()
+                event.stop()
+            elif focused is self.query_one("#q", Input) and self.query_one("#results").display:
+                self.query_one("#results", DataTable).focus()
+                event.stop()
 
-    class DetailsScreen(Screen):
-        """Displays full metadata and the chapter list for a selected manga.
-        
-        Fetches the details lazily on mount via a background worker.
+        def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+            key = event.row_key.value or ""
+            if event.data_table.id == "src_table":
+                if key.startswith("src:"):
+                    idx = int(key[4:])
+                    if 0 <= idx < len(self._src_view):
+                        self._current_source = self._src_view[idx]
+                        self._mode, self._query, self._page = "popular", "", 1
+                        self.query_one("#q", Input).value = ""
+                        self._fetch()
+                return
+            if event.data_table.id == "results":
+                idx = int(key) if key else -1
+                if 0 <= idx < len(self._results):
+                    self.push_screen(
+                        DetailsScreen(
+                            self._client, self._sync, self._current_source, self._results[idx]
+                        )
+                    )
+
+        # -- actions ------------------------------------------------------- #
+        def _focused_table(self) -> DataTable | None:
+            w = self.focused
+            return w if isinstance(w, DataTable) else None
+
+        def _skip_headers(self, table: DataTable, direction: int) -> None:
+            """When landing on a language-header row in the source list, step past it."""
+            if table.id != "src_table":
+                return
+            for _ in range(4):
+                pos = table.cursor_row
+                if 0 <= pos < len(self._src_rows) and self._src_rows[pos][0] == "hdr":
+                    table.action_cursor_down() if direction >= 0 else table.action_cursor_up()
+                else:
+                    break
+
+        def action_cursor_down(self) -> None:
+            if t := self._focused_table():
+                t.action_cursor_down()
+                self._skip_headers(t, +1)
+
+        def action_cursor_up(self) -> None:
+            if t := self._focused_table():
+                t.action_cursor_up()
+                self._skip_headers(t, -1)
+
+        def action_cursor_top(self) -> None:
+            if t := self._focused_table():
+                t.move_cursor(row=0)
+                self._skip_headers(t, +1)
+
+        def action_cursor_bottom(self) -> None:
+            if t := self._focused_table():
+                t.move_cursor(row=t.row_count - 1)
+                self._skip_headers(t, -1)
+
+        def action_focus_sidebar(self) -> None:
+            self.query_one("#src_table", DataTable).focus()
+
+        def action_focus_search(self) -> None:
+            self.query_one("#q", Input).focus()
+
+        def action_focus_filter(self) -> None:
+            self.query_one("#src_filter", Input).focus()
+
+        def action_popular(self) -> None:
+            self._mode, self._page, self._query = "popular", 1, ""
+            self.query_one("#q", Input).value = ""
+            self._fetch()
+
+        def action_latest(self) -> None:
+            self._mode, self._page, self._query = "latest", 1, ""
+            self.query_one("#q", Input).value = ""
+            self._fetch()
+
+        def action_next_page(self) -> None:
+            self._page += 1
+            self._fetch()
+
+        def action_prev_page(self) -> None:
+            if self._page > 1:
+                self._page -= 1
+                self._fetch()
+
+        def action_refresh(self) -> None:
+            if self.focused is self.query_one("#src_table", DataTable):
+                self._load_sources()
+            else:
+                self._fetch()
+
+        def action_toggle_nsfw(self) -> None:
+            self._hide_nsfw = not self._hide_nsfw
+            from nyora.config import set_show_nsfw
+
+            set_show_nsfw(not self._hide_nsfw)
+            self._render_sources(self.query_one("#src_filter", Input).value)
+            if self._current_source is not None:
+                self._fetch()
+            else:
+                self._render_modebar()
+
+        def action_help(self) -> None:
+            self.push_screen(KeysScreen())
+
+        def action_account(self) -> None:
+            self.push_screen(AccountScreen(self._sync))
+
+        def action_library(self) -> None:
+            self.push_screen(
+                LibraryScreen(self._client, self._sync, self._sources, self._lib, self._dl)
+            )
+
+        def action_history(self) -> None:
+            self.push_screen(
+                HistoryScreen(self._client, self._sync, self._sources, self._lib, self._dl)
+            )
+
+    # ----------------------------------------------------------------------- #
+    # Account (sign in / out) modal.
+    # ----------------------------------------------------------------------- #
+    class AccountScreen(ModalScreen):
+        """Sign in or out of Nyora cloud sync."""
+
+        BINDINGS = [Binding("escape", "dismiss", "Close")]
+        CSS = """
+        AccountScreen { align: center middle; }
+        #acct {
+            width: 54; height: auto; border: round $primary; background: $surface; padding: 1 2;
+        }
+        #acct Input { margin-top: 1; }
+        #acct_msg { margin-top: 1; }
         """
-        BINDINGS = [
-            Binding("escape", "app.pop_screen", "Back", show=False),
-            Binding("b", "app.pop_screen", "Back"),
-            Binding("q", "app.quit", "Quit"),
-        ]
 
-        def __init__(self, app_client, source, manga) -> None:
+        def __init__(self, sync) -> None:
             super().__init__()
-            self._client = app_client
-            self._source = source
-            self._manga = manga
+            self._sync = sync
 
         def compose(self) -> ComposeResult:
-            yield Header(show_clock=False)
-            with Horizontal():
-                with Vertical(id="sidebar"):
-                    yield Static("Loading details...", id="desc")
-                with Vertical(id="main"):
-                    yield Static("[b]Chapters[/b]", id="chap_head")
-                    yield ListView(id="chapters")
-            yield Footer()
+            with Vertical(id="acct"):
+                if self._sync.is_signed_in:
+                    yield Static(f"Signed in as [$success]{self._sync.email}[/]")
+                    yield Static("[dim]Press enter to sign out, esc to close.[/]", id="acct_msg")
+                else:
+                    yield Static("[b]Sign in to Nyora sync[/]")
+                    yield Input(placeholder="email", id="acct_email")
+                    yield Input(placeholder="password", password=True, id="acct_pw")
+                    yield Static("[dim]Enter to sign in, esc to cancel.[/]", id="acct_msg")
 
         def on_mount(self) -> None:
-            self.run_worker(self._do_fetch, exclusive=True, thread=True, name="details")
-            self.query_one("#chapters", ListView).focus()
+            if not self._sync.is_signed_in:
+                self.query_one("#acct_email", Input).focus()
 
-        def _do_fetch(self):
-            return _safe(_fetch_details, self._client, self._source.id, self._manga.url, self._manga.title)
+        def on_key(self, event) -> None:
+            if event.key == "enter" and self._sync.is_signed_in:
+                self._sync.sign_out()
+                self.app.pop_screen()
 
-        def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
-            if event.worker.name != "details" or event.state != WorkerState.SUCCESS:
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            if self._sync.is_signed_in:
                 return
-            details, err = event.worker.result
-            if err:
-                self.query_one("#desc", Static).update(f"[red]Error: {err}[/red]")
+            email = self.query_one("#acct_email", Input).value.strip()
+            pw = self.query_one("#acct_pw", Input).value.strip()
+            if not email or not pw:
+                self.query_one("#acct_msg", Static).update(
+                    "[warning]email and password required[/]"
+                )
                 return
-            m = details.manga
-            authors = ", ".join(m.authors) if m.authors else "Unknown"
-            desc = f"[b]{m.title}[/b]\n\n[b]Authors:[/b] {authors}\n[b]State:[/b] {m.state or 'n/a'}\n\n{m.description or ''}"
-            self.query_one("#desc", Static).update(desc)
-            self.query_one("#chap_head", Static).update(f"[b]Chapters ({len(details.chapters)})[/b]")
-            lv = self.query_one("#chapters", ListView)
-            lv.clear()
-            for c in details.chapters:
-                lv.append(_Row(f"{c.title or c.id} [dim]<{c.branch or '-'}>[/dim]", c))
+            try:
+                self._sync.sign_in(email, pw)
+                self.app.pop_screen()
+            except Exception as exc:  # noqa: BLE001 - surface auth failure inline
+                self.query_one("#acct_msg", Static).update(f"[error]{_esc(str(exc))}[/]")
 
-        def on_list_view_selected(self, event: ListView.Selected) -> None:
-            payload = getattr(event.item, "payload", None)
-            if payload:
-                self.app.push_screen(PagesScreen(self._client, self._source, payload))
+    # ----------------------------------------------------------------------- #
+    # Details + chapters.
+    # ----------------------------------------------------------------------- #
+    class DetailsScreen(Screen):
+        """Full metadata, cover art, and a dense chapter table for one manga."""
 
-    class PagesScreen(Screen):
-        """Displays the pages of a single chapter in a continuous scrolling webtoon view.
-        
-        Fetches the page URLs and dynamically downloads and slices the images to
-        support the Kitty terminal graphics protocol natively.
-        """
         BINDINGS = [
-            Binding("escape", "app.pop_screen", "Back", show=False),
-            Binding("b", "app.pop_screen", "Back"),
+            Binding("escape,b", "app.pop_screen", "Back"),
             Binding("q", "app.quit", "Quit"),
-            Binding("j", "scroll_down", "Down", show=False),
-            Binding("k", "scroll_up", "Up", show=False),
-            Binding("space", "page_down", "Page Down", show=False),
+            Binding("f", "favourite", "Favourite"),
+            Binding("d", "download", "Download ch"),
+            Binding("j,down", "cursor_down", "Down", show=False),
+            Binding("k,up", "cursor_up", "Up", show=False),
+            Binding("g", "cursor_top", "Top", show=False),
+            Binding("G", "cursor_bottom", "Bottom", show=False),
         ]
         CSS = """
-        PagesScreen { background: transparent; }
-        #pages_container { background: transparent; }
+        #d_side { width: 46; background: $surface; border-right: solid $panel; padding: 1 2; }
+        #d_cover { height: auto; }
+        #d_meta { height: auto; padding: 1 0 0 0; }
+        #d_main { width: 1fr; }
+        #d_head {
+            height: 1; padding: 0 2; background: $surface; color: $secondary;
+            text-style: bold; border-bottom: solid $panel;
+        }
+        #chapters { height: 1fr; padding: 0 1; }
         """
-        def __init__(self, client, source, chapter):
+
+        def __init__(self, client, sync, source, manga) -> None:
             super().__init__()
-            self.client, self.source, self.chapter = client, source, chapter
-            self._pages = []
-
-        def action_scroll_down(self) -> None:
-            self.query_one("#pages_container").scroll_relative(y=3)
-
-        def action_scroll_up(self) -> None:
-            self.query_one("#pages_container").scroll_relative(y=-3)
-
-        def action_page_down(self) -> None:
-            self.query_one("#pages_container").scroll_page_down()
+            self._client = client
+            self._sync = sync
+            self._source = source
+            self._manga = manga
+            self._details: MangaDetails | None = None
 
         def compose(self) -> ComposeResult:
-            from textual.containers import VerticalScroll
-            yield Header(show_clock=False)
-            yield Static(f"[b]{self.chapter.title or self.chapter.id}[/b]")
-            with VerticalScroll(id="pages_container"):
-                yield Static("Loading...", id="status")
+            yield Header(show_clock=True)
+            with Horizontal():
+                # Top-aligned scrollable column: metadata first (title pinned to
+                # the top), cover below it, so an absent cover leaves no gap.
+                with VerticalScroll(id="d_side"):
+                    yield Static("loading…", id="d_meta")
+                    yield Vertical(id="d_cover")
+                with Vertical(id="d_main"):
+                    yield Static("chapters", id="d_head")
+                    yield DataTable(id="chapters", cursor_type="row", zebra_stripes=True)
             yield Footer()
-        def on_mount(self) -> None:
-            self.run_worker(self._do_fetch, exclusive=True, thread=True, name="pages")
-        def _do_fetch(self):
-            return _safe(_fetch_pages, self.client, self.source.id, self.chapter.url, self.chapter.branch)
-        def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
-            if event.worker.name == "pages" and event.state == WorkerState.SUCCESS:
-                pages, err = event.worker.result
-                if err:
-                    self.query_one("#status", Static).update(f"Error: {err}")
-                    return
-                self._pages = pages
-                self.query_one("#status", Static).update(f"{len(pages)} pages found. Loading webtoon...")
-                self.run_worker(self._download_images, exclusive=True, thread=True, name="images")
 
-        def _download_images(self):
+        def on_mount(self) -> None:
+            t = self.query_one("#chapters", DataTable)
+            t.add_columns("#", "chapter", "vol", "branch", "scanlator", "age")
+            self._load()
+
+        @work(exclusive=True, thread=True, group="details")
+        def _load(self) -> None:
+            details, err = _safe(
+                _fetch_details, self._client, self._source.id, self._manga.url, self._manga.title
+            )
+            self.app.call_from_thread(self._on_details, details, err)
+
+        def _on_details(self, details, err) -> None:
+            if err or details is None:
+                self.query_one("#d_meta", Static).update(f"[error]{_esc(str(err))}[/]")
+                return
+            self._details = details
+            self._render_meta()
+            self.query_one("#d_head", Static).update(f"chapters · {len(details.chapters)}")
+            self._render_chapters()
+            self.query_one("#chapters", DataTable).focus()
+            self._load_cover(details.manga)
+
+        def _render_meta(self) -> None:
+            if self._details is None:
+                return
+            app: Any = self.app
+            m = self._details.manga
+            fav = app._lib.is_favourite(manga_id_of(m))
+            heart = "[$accent]♥ in library[/]" if fav else "[dim]♡ press f to favourite[/]"
+            authors = ", ".join(m.authors) if m.authors else "Unknown"
+            tags = ", ".join(t.get("title", "") for t in m.tags if t.get("title"))
+            lines = [
+                f"[b $accent]{_esc(m.title)}[/]",
+                heart,
+                "",
+                f"[$secondary]rating[/]  {_rating_badge(m.rating)}   "
+                f"[$secondary]state[/]  {_esc(m.state or '—')}"
+                + ("   [error]NSFW[/]" if m.is_nsfw else ""),
+                f"[$secondary]author[/]  {_esc(authors)}",
+                f"[$secondary]source[/]  {_esc(self._source.name)}",
+                f"[$secondary]chaps[/]   {len(self._details.chapters)}",
+            ]
+            if m.alt_titles:
+                alt = _esc(_truncate(", ".join(m.alt_titles), 60))
+                lines.append(f"[$secondary]alt[/]     {alt}")
+            if tags:
+                lines.append(f"[$secondary]tags[/]    {_esc(_truncate(tags, 120))}")
+            lines += ["", _esc(m.description) if m.description else "[dim](no description)[/]"]
+            self.query_one("#d_meta", Static).update("\n".join(lines))
+
+        def _render_chapters(self) -> None:
+            if self._details is None:
+                return
+            app: Any = self.app
+            mid = manga_id_of(self._details.manga)
+            table = self.query_one("#chapters", DataTable)
+            table.clear()
+            for i, c in enumerate(self._details.chapters):
+                num = f"{c.number:g}" if c.number else str(i + 1)
+                got = app._dl.is_downloaded(mid, c)
+                title = ("[success]⤓[/] " if got else "") + _esc(_truncate(c.title or c.id, 46))
+                table.add_row(
+                    num,
+                    title,
+                    str(c.volume or "—"),
+                    _esc(_truncate(c.branch or "—", 12)),
+                    _esc(_truncate(c.scanlator or "—", 14)),
+                    _relative_age(c.upload_date),
+                    key=str(i),
+                )
+
+        @work(exclusive=True, thread=True, group="cover")
+        def _load_cover(self, manga) -> None:
+            url = (
+                manga.large_cover_url
+                or manga.cover_url
+                or self._manga.large_cover_url
+                or self._manga.cover_url
+            )
+            if not url:
+                return
             import io
+
             import httpx
             from PIL import Image
-            from nyora_tui.sync import BROWSER_UA
+
+            try:
+                with httpx.Client(timeout=20.0, follow_redirects=True) as http:
+                    res = http.get(url, headers={"User-Agent": BROWSER_UA})
+                res.raise_for_status()
+                img = Image.open(io.BytesIO(res.content)).convert("RGB")
+            except Exception:  # noqa: BLE001 - cover is decorative; never break details
+                return
+            self.app.call_from_thread(self._mount_cover, img)
+
+        def _mount_cover(self, img) -> None:
+            try:
+                container = self.query_one("#d_cover", Vertical)
+                _mount_image(container, img, 42)
+            except Exception:  # noqa: BLE001
+                pass
+
+        def _table(self):
+            return self.query_one("#chapters", DataTable)
+
+        def action_cursor_down(self) -> None:
+            self._table().action_cursor_down()
+
+        def action_cursor_up(self) -> None:
+            self._table().action_cursor_up()
+
+        def action_cursor_top(self) -> None:
+            self._table().move_cursor(row=0)
+
+        def action_cursor_bottom(self) -> None:
+            self._table().move_cursor(row=self._table().row_count - 1)
+
+        def action_favourite(self) -> None:
+            """Toggle favourite locally; mirror to the cloud when signed in."""
+            if self._details is None:
+                return
+            app: Any = self.app
+            manga = self._details.manga
+            fav = app._lib.toggle_favourite(self._source.id, manga)
+            if self._sync.is_signed_in:
+                if fav:
+                    _safe(self._sync.favourite, self._source.id, manga)
+                else:
+                    _safe(self._sync.unfavourite, manga_id_of(manga))
+            self._render_meta()
+            self.notify(
+                "Added to library." if fav else "Removed from library.", severity="information"
+            )
+
+        def action_download(self) -> None:
+            """Download the highlighted chapter into the managed downloads folder."""
+            if self._details is None:
+                return
+            row = self._table().cursor_row
+            if not (0 <= row < len(self._details.chapters)):
+                return
+            chapter = self._details.chapters[row]
+            self.notify(f"Downloading {chapter.title or chapter.id}…", severity="information")
+            self._download_chapter(chapter)
+
+        @work(exclusive=False, thread=True, group="dl")
+        def _download_chapter(self, chapter) -> None:
+            from nyora.cli import _download_cbz
+
+            if self._details is None:
+                return
+            app: Any = self.app
+            manga = self._details.manga
+            pages, err = _safe(
+                _fetch_pages, self._client, self._source.id, chapter.url, chapter.branch
+            )
+            if err or not pages:
+                self.app.call_from_thread(
+                    self.notify, f"No pages: {_esc(str(err or 'empty'))}", severity="error"
+                )
+                return
+            cbz = app._dl.cbz_path(self._source.name, manga, chapter)
+            saved, _total = _download_cbz(pages, cbz)
+            app._dl.record(self._source.id, self._source.name, manga, chapter, cbz, saved)
+            self.app.call_from_thread(self._after_download, chapter, saved, cbz.name)
+
+        def _after_download(self, chapter, count: int, name: str) -> None:
+            self.notify(
+                f"Saved {name} ({count} pages) → Downloads/nyora-tui", severity="information"
+            )
+            if self._details is not None:
+                self._render_chapters()  # show the ⤓ marker
+
+        def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+            if self._details is None:
+                return
+            idx = int(event.row_key.value) if event.row_key.value is not None else -1
+            if 0 <= idx < len(self._details.chapters):
+                self.app.push_screen(
+                    PagesScreen(
+                        self._client, self._source, self._sync, self._details,
+                        self._details.chapters[idx],
+                    )
+                )
+
+    # ----------------------------------------------------------------------- #
+    # Reader (continuous webtoon).
+    # ----------------------------------------------------------------------- #
+    class PagesScreen(Screen):
+        """Reader with three modes — WEBTOON (scroll), PAGED (LTR), PAGED_RTL —
+        order-aware chapter navigation, fit control, and cloud history."""
+
+        BINDINGS = [
+            Binding("escape", "app.pop_screen", "Back"),
+            Binding("q", "app.quit", "Quit"),
+            Binding("m", "cycle_mode", "Mode"),
+            Binding("f", "toggle_fit", "Fit"),
+            Binding("n", "next_chapter", "Next ch"),
+            Binding("p", "prev_chapter", "Prev ch"),
+            Binding("d", "download", "Download"),
+            # webtoon scroll
+            Binding("j,down", "scroll_down", "Down", show=False),
+            Binding("k,up", "scroll_up", "Up", show=False),
+            Binding("ctrl+d", "half_down", "½", show=False),
+            Binding("ctrl+u", "half_up", "½", show=False),
+            Binding("space", "advance", "Page/Down"),
+            Binding("b", "page_up", "Page↑", show=False),
+            # paged navigation (arrows are RTL-aware, like the web reader)
+            Binding("right,l", "arrow_right", "→", show=False),
+            Binding("left,h", "arrow_left", "←", show=False),
+            Binding("g", "first", "First", show=False),
+            Binding("G", "last", "Last", show=False),
+        ]
+        CSS = """
+        PagesScreen { background: $background; }
+        #reader_head {
+            height: 1; padding: 0 2; background: $surface; color: $secondary;
+            text-style: bold; border-bottom: solid $panel;
+        }
+        #pages_container { background: $background; align-horizontal: center; }
+        #reader_status { padding: 2 3; }
+        .pageslot { height: auto; width: 100%; }
+        #reader_foot {
+            dock: bottom; height: 1; padding: 0 2; background: $surface;
+            color: $text-muted; border-top: solid $panel;
+        }
+        """
+
+        def __init__(self, client, source, sync, details, chapter, local_cbz=None) -> None:
+            super().__init__()
+            self._client = client
+            self._source = source
+            self._sync = sync
+            self._details = details
+            self.chapter = chapter
+            self._local_cbz = local_cbz  # set → read pages from a .cbz on disk
+            from nyora.config import read_reader_prefs
+
+            prefs = read_reader_prefs()
+            mode = prefs.get("mode")
+            fit = prefs.get("fit")
+            self._mode: str = mode if mode in ("WEBTOON", "PAGED", "PAGED_RTL") else "WEBTOON"
+            self._fit: str = fit if fit in ("WIDTH", "HEIGHT") else "WIDTH"
+            self._pages: list = []
+            self._images: list = []          # decoded PIL images (None until fetched/failed)
+            self._errors: list = []          # per-page error string or None
+            self._page_idx = 0               # current page in paged modes
+            self._loaded = 0
+            self._failed = 0
+            self._done_flag = False
+
+        def compose(self) -> ComposeResult:
+            yield Header(show_clock=True)
+            yield Static("", id="reader_head")
+            with VerticalScroll(id="pages_container"):
+                yield Static("resolving pages…", id="reader_status")
+            yield Static("", id="reader_foot")
+            yield Footer()
+
+        def on_mount(self) -> None:
+            self.set_interval(0.25, self._update_foot)
+            self._render_head()
+            if self._local_cbz:
+                self._load_local()
+            else:
+                self._load()
+
+        # -- header / footer ---------------------------------------------- #
+        def _render_head(self) -> None:
+            proto = _PROTOCOL if _PROTOCOL != "none" else "NO GRAPHICS"
+            title = _esc(self.chapter.title or self.chapter.id)
+            mode = {"WEBTOON": "webtoon", "PAGED": "paged", "PAGED_RTL": "paged-rtl"}[self._mode]
+            offline = " [success]· offline[/]" if self._local_cbz else ""
+            self.query_one("#reader_head", Static).update(
+                f"[b]{title}[/]   [dim]· {mode} · {self._fit.lower()} · img:[/] {proto}{offline}"
+            )
+
+        @work(exclusive=True, thread=True, group="local")
+        def _load_local(self) -> None:
+            import io
+
+            from PIL import Image
+
+            from nyora_tui.store import Downloads
+
+            imgs: list = []
+            for data in Downloads.cbz_images(self._local_cbz):
+                try:
+                    imgs.append(Image.open(io.BytesIO(data)).convert("RGB"))
+                except Exception:  # noqa: BLE001
+                    imgs.append(None)
+            self.app.call_from_thread(self._on_local, imgs)
+
+        def _on_local(self, imgs: list) -> None:
+            container = self.query_one("#pages_container", VerticalScroll)
+            container.remove_children()
+            if not imgs:
+                container.mount(Static("[warning]No downloaded pages found on disk.[/]"))
+                self._done_flag = True
+                return
+            self._pages = [None] * len(imgs)
+            self._images = list(imgs)
+            self._errors = [None] * len(imgs)
+            self._loaded = sum(1 for i in imgs if i is not None)
+            self._done_flag = True
+            self._page_idx = 0
+            self._build_view()
+
+        def _update_foot(self) -> None:
+            try:
+                foot = self.query_one("#reader_foot", Static)
+            except Exception:  # noqa: BLE001
+                return
+            proto = (
+                f"[$secondary]{_PROTOCOL}[/]" if _PROTOCOL != "none" else "[error]no graphics[/]"
+            )
+            fail = f"  ·  [warning]{self._failed} failed[/]" if self._failed else ""
+            if self._mode == "WEBTOON":
+                c = self.query_one("#pages_container", VerticalScroll)
+                maxy = max(1, c.max_scroll_y)
+                pct = min(100, int(c.scroll_offset.y / maxy * 100)) if maxy else 100
+                pos = f"{self._loaded}/{len(self._pages)} loaded · scroll {pct}%"
+            else:
+                pos = f"page {self._page_idx + 1}/{len(self._pages) or '?'}"
+            hint = "m mode · f fit · n/p chapter · d save"
+            foot.update(f"{pos}{fail}  ·  {proto}  ·  [dim]{hint}[/]")
+
+        # -- page loading ------------------------------------------------- #
+        @work(exclusive=True, thread=True, group="pages")
+        def _load(self) -> None:
+            pages, err = _safe(
+                _fetch_pages, self._client, self._source.id, self.chapter.url, self.chapter.branch
+            )
+            self.app.call_from_thread(self._on_pages, pages, err)
+
+        def _on_pages(self, pages, err) -> None:
+            container = self.query_one("#pages_container", VerticalScroll)
+            container.remove_children()
+            if err:
+                container.mount(Static(f"[error]Failed to resolve pages:[/]\n{_esc(str(err))}"))
+                self._done_flag = True
+                return
+            self._pages = pages or []
+            if not self._pages:
+                container.mount(
+                    Static(
+                        "[warning]No pages returned for this chapter.[/]\n"
+                        "[dim]The source may gate this chapter, or the list was empty — "
+                        "try another chapter or source.[/]"
+                    )
+                )
+                self._done_flag = True
+                return
+            n = len(self._pages)
+            self._images = [None] * n
+            self._errors = [None] * n
+            self._page_idx = 0
+            self._loaded = self._failed = 0
+            self._done_flag = False
+            self._build_view()
+            self._record_history()
+            self._download_images()
+
+        def _build_view(self) -> None:
+            """Lay out the container for the current mode (called on load / mode switch).
+
+            The mount is deferred to after the pending ``remove_children`` is
+            processed, so a fixed-id child never collides with its predecessor.
+            """
+            self.query_one("#pages_container", VerticalScroll).remove_children()
+            self.call_after_refresh(self._populate_view)
+
+        def _populate_view(self) -> None:
+            container = self.query_one("#pages_container", VerticalScroll)
+            if container.children or not self._pages:
+                return
+            if self._mode == "WEBTOON":
+                container.mount_all(
+                    Vertical(
+                        Static(f"[dim]page {i + 1} · loading…[/]"), id=f"pg_{i}", classes="pageslot"
+                    )
+                    for i in range(len(self._pages))
+                )
+                for i, img in enumerate(self._images):
+                    if img is not None:
+                        self._place_webtoon(i, img)
+                    elif self._errors[i]:
+                        self._slot(i).mount(
+                            Static(f"[error]page {i + 1}: {_esc(str(self._errors[i]))}[/]")
+                        )
+            else:
+                container.mount(Vertical(id="page_now", classes="pageslot"))
+                self._show_page()
+
+        # -- concurrent download ------------------------------------------ #
+        @work(exclusive=True, thread=True, group="images")
+        def _download_images(self) -> None:
+            import io
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            import httpx
+            from PIL import Image
 
             http = httpx.Client(timeout=30.0, follow_redirects=True)
-            for i, p in enumerate(self._pages):
+
+            def fetch(index: int, page):
+                url = getattr(page, "url", "") or ""
+                if not url.lower().startswith(("http://", "https://")):
+                    return index, None, f"non-absolute url: {url[:50]}"
+                headers = {"Referer": self.chapter.url, "User-Agent": BROWSER_UA}
+                headers.update(getattr(page, "headers", {}))
                 try:
-                    headers = {"Referer": self.chapter.url, "User-Agent": BROWSER_UA}
-                    headers.update(getattr(p, "headers", {}))
-                    res = http.get(p.url, headers=headers)
-                    if res.status_code == 200:
-                        img = Image.open(io.BytesIO(res.content)).convert("RGB")
-                        self.app.call_from_thread(self._add_image, img, i)
-                    else:
-                        self.app.call_from_thread(self._add_error, i, f"HTTP {res.status_code}")
-                except Exception as e:
-                    self.app.call_from_thread(self._add_error, i, str(e))
+                    res = http.get(url, headers=headers)
+                    if res.status_code != 200:
+                        return index, None, f"HTTP {res.status_code}"
+                    return index, Image.open(io.BytesIO(res.content)).convert("RGB"), None
+                except Exception as exc:  # noqa: BLE001
+                    return index, None, f"{type(exc).__name__}: {exc}"
+
+            pages = list(self._pages)
+            try:
+                with ThreadPoolExecutor(max_workers=5) as pool:
+                    futures = [pool.submit(fetch, i, p) for i, p in enumerate(pages)]
+                    for fut in as_completed(futures):
+                        index, img, err = fut.result()
+                        self.app.call_from_thread(self._on_image, index, img, err, pages)
+            finally:
+                http.close()
             self.app.call_from_thread(self._done)
 
-        def _add_image(self, img, idx):
-            container = self.query_one("#pages_container")
+        def _on_image(self, index: int, img, err, pages) -> None:
+            if pages is not self._pages and pages != self._pages:
+                return  # a chapter change superseded this download
+            if index >= len(self._images):
+                return
+            if img is None:
+                self._failed += 1
+                self._errors[index] = err
+            else:
+                self._loaded += 1
+                self._images[index] = img
+            if self._mode == "WEBTOON":
+                if img is not None:
+                    self._place_webtoon(index, img)
+                else:
+                    try:
+                        self._slot(index).remove_children()
+                        self._slot(index).mount(
+                            Static(f"[error]page {index + 1}: {_esc(str(err))}[/]")
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+            elif index == self._page_idx:
+                self._show_page()
+
+        def _done(self) -> None:
+            self._done_flag = True
+            if self._loaded == 0 and _PROTOCOL != "none" and self._mode == "WEBTOON":
+                self.query_one("#pages_container", VerticalScroll).mount(
+                    Static(
+                        f"[warning]Rendered 0 of {len(self._pages)} pages (img: {_PROTOCOL}).[/]\n"
+                        f"[dim]Downloads finished but this terminal isn't showing {_PROTOCOL} "
+                        f"images inside the TUI. Try NYORA_TUI_IMAGE=halfcell, "
+                        f"or press d to save.[/]",
+                        id="reader_note",
+                    ),
+                    before=0,
+                )
+
+        # -- rendering helpers -------------------------------------------- #
+        def _slot(self, i: int) -> Vertical:
+            return self.query_one(f"#pg_{i}", Vertical)
+
+        def _fit_cols(self, img) -> int:
+            """Content width (cells) for the current fit mode."""
+            cols = self.app.console.width
+            if self._fit == "HEIGHT":
+                rows = max(4, self.app.console.height - 4)
+                w, h = img.size
+                by_h = int(rows * (w / h) * (_CELL_H / _CELL_W))
+                return max(8, min(cols, by_h))
+            return cols
+
+        def _place_webtoon(self, index: int, img) -> None:
             try:
-                import os
-                term_prog = os.environ.get("TERM_PROGRAM", "").lower()
-                term = os.environ.get("TERM", "").lower()
-                
-                if "ghostty" in term_prog or "kitty" in term_prog or "wezterm" in term_prog or "ghostty" in term or "kitty" in term:
-                    from textual_image.widget import TGPImage as TextualImage
-                else:
-                    from textual_image.widget import Image as TextualImage
-                    
-                term_w = self.app.console.width
-                w, h = img.size
-                lines = int(term_w * (h / w) * 0.5)
-                
-                # textual-image TGPImage crashes if a single image exceeds 169 lines (ValueError: Image too large)
-                # Slice the image into chunks of max 150 lines
-                max_lines = 150
-                if lines > max_lines:
-                    max_h_per_chunk = int(max_lines / (term_w * 0.5) * w)
-                    for y in range(0, h, max_h_per_chunk):
-                        chunk_img = img.crop((0, y, w, min(y + max_h_per_chunk, h)))
-                        chunk_w, chunk_h = chunk_img.size
-                        widget = TextualImage(chunk_img)
-                        widget.styles.width = "100%"
-                        chunk_lines = int(term_w * (chunk_h / chunk_w) * 0.5)
-                        widget.styles.height = max(1, chunk_lines)
-                        container.mount(widget)
-                else:
-                    widget = TextualImage(img)
-                    widget.styles.width = "100%"
-                    widget.styles.height = max(1, lines)
-                    container.mount(widget)
-            except ImportError:
-                from PIL import Image as PILImage
-                from rich_pixels import Pixels
-                term_w = self.app.console.width - 4
-                if term_w < 10:
-                    term_w = 80
-                w, h = img.size
-                new_h = int((term_w / w) * h)
-                if new_h > 0 and term_w > 0:
-                    img = img.resize((term_w, new_h), PILImage.Resampling.LANCZOS)
-                px = Pixels.from_image(img)
-                container.mount(Static(px))
+                slot = self._slot(index)
+                slot.remove_children()
+                _mount_image(slot, img, self._fit_cols(img))
+            except Exception as exc:  # noqa: BLE001
+                self._errors[index] = str(exc)
 
-        def _add_error(self, idx, err):
-            container = self.query_one("#pages_container")
-            container.mount(Static(f"[red]Failed to load page {idx+1}: {err}[/red]"))
+        def _show_page(self) -> None:
+            try:
+                view = self.query_one("#page_now", Vertical)
+            except Exception:  # noqa: BLE001
+                return
+            view.remove_children()
+            i = self._page_idx
+            img = self._images[i] if i < len(self._images) else None
+            if img is not None:
+                try:
+                    _mount_image(view, img, self._fit_cols(img))
+                except Exception as exc:  # noqa: BLE001
+                    view.mount(Static(f"[error]page {i + 1}: render: {_esc(str(exc))}[/]"))
+            elif self._errors[i]:
+                view.mount(Static(f"[error]page {i + 1}: {_esc(str(self._errors[i]))}[/]"))
+            else:
+                view.mount(Static(f"[dim]page {i + 1} · loading…[/]"))
+            self._update_foot()
 
-        def _done(self):
-            self.query_one("#status", Static).update(f"[green]All {len(self._pages)} pages loaded![/green]")
+        # -- history ------------------------------------------------------- #
+        @work(exclusive=True, thread=True, group="history")
+        def _record_history(self) -> None:
+            manga = self._details.manga if self._details else self.chapter
+            total = len(self._details.chapters) if self._details else 0
+            pct = (self._page_idx + 1) / len(self._pages) if self._pages else 0.0
+            # Local history always; cloud history when signed in.
+            app: Any = self.app
+            _safe(
+                app._lib.record_history,
+                self._source.id,
+                manga,
+                self.chapter,
+                page=self._page_idx,
+                total=total,
+                percent=pct,
+            )
+            if self._sync and self._sync.is_signed_in:
+                _safe(
+                    self._sync.record_history,
+                    self._source.id,
+                    manga,
+                    self.chapter,
+                    page=self._page_idx,
+                    total=total,
+                    percent=pct,
+                )
+
+        # -- chapter navigation (order-aware) ----------------------------- #
+        def _open_chapter(self, chapter) -> None:
+            self.chapter = chapter
+            self._pages = []
+            self._images = []
+            self._errors = []
+            self._page_idx = 0
+            self._loaded = self._failed = 0
+            self._done_flag = False
+            self._render_head()
+            container = self.query_one("#pages_container", VerticalScroll)
+            container.remove_children()
+            container.mount(Static("resolving pages…", id="reader_status"))
+            self._load()
+
+        def action_next_chapter(self) -> None:
+            nxt = self._details.next_chapter(self.chapter) if self._details else None
+            if nxt:
+                self._open_chapter(nxt)
+            else:
+                self.notify("No next chapter.", severity="warning")
+
+        def action_prev_chapter(self) -> None:
+            prv = self._details.previous_chapter(self.chapter) if self._details else None
+            if prv:
+                self._open_chapter(prv)
+            else:
+                self.notify("No previous chapter.", severity="warning")
+
+        # -- mode / fit ---------------------------------------------------- #
+        def action_cycle_mode(self) -> None:
+            order = ["WEBTOON", "PAGED", "PAGED_RTL"]
+            self._mode = order[(order.index(self._mode) + 1) % len(order)]
+            from nyora.config import set_reader_pref
+
+            set_reader_pref("mode", self._mode)
+            self._render_head()
+            if self._pages:
+                self._build_view()
+            self._update_foot()
+
+        def action_toggle_fit(self) -> None:
+            self._fit = "HEIGHT" if self._fit == "WIDTH" else "WIDTH"
+            from nyora.config import set_reader_pref
+
+            set_reader_pref("fit", self._fit)
+            self._render_head()
+            if self._pages:
+                self._build_view()
+
+        # -- paged navigation --------------------------------------------- #
+        def _page_step(self, delta: int) -> None:
+            target = self._page_idx + delta
+            if target < 0:
+                self.action_prev_chapter()
+                return
+            if target >= len(self._pages):
+                self.action_next_chapter()
+                return
+            self._page_idx = target
+            self._show_page()
+            self._record_history()
+
+        def action_arrow_right(self) -> None:
+            if self._mode == "WEBTOON":
+                return
+            self._page_step(-1 if self._mode == "PAGED_RTL" else 1)
+
+        def action_arrow_left(self) -> None:
+            if self._mode == "WEBTOON":
+                return
+            self._page_step(1 if self._mode == "PAGED_RTL" else -1)
+
+        def action_first(self) -> None:
+            if self._mode == "WEBTOON":
+                self.action_scroll_home()
+            else:
+                self._page_idx = 0
+                self._show_page()
+
+        def action_last(self) -> None:
+            if self._mode == "WEBTOON":
+                self.action_scroll_end()
+            elif self._pages:
+                self._page_idx = len(self._pages) - 1
+                self._show_page()
+
+        def action_advance(self) -> None:
+            # space: next page (paged) / page-down (webtoon)
+            if self._mode == "WEBTOON":
+                self._reader().scroll_page_down(animate=True, duration=0.3, easing="out_cubic")
+            else:
+                self._page_step(1)
+
+        # -- webtoon scrolling -------------------------------------------- #
+        def _reader(self) -> VerticalScroll:
+            return self.query_one("#pages_container", VerticalScroll)
+
+        def action_scroll_down(self) -> None:
+            if self._mode == "WEBTOON":
+                self._reader().scroll_relative(y=3, animate=True, duration=0.10, easing="out_cubic")
+
+        def action_scroll_up(self) -> None:
+            if self._mode == "WEBTOON":
+                self._reader().scroll_relative(
+                    y=-3, animate=True, duration=0.10, easing="out_cubic"
+                )
+
+        def action_half_down(self) -> None:
+            if self._mode == "WEBTOON":
+                self._reader().scroll_relative(
+                    y=12, animate=True, duration=0.22, easing="out_cubic"
+                )
+
+        def action_half_up(self) -> None:
+            if self._mode == "WEBTOON":
+                self._reader().scroll_relative(
+                    y=-12, animate=True, duration=0.22, easing="out_cubic"
+                )
+
+        def action_page_up(self) -> None:
+            if self._mode == "WEBTOON":
+                self._reader().scroll_page_up(animate=True, duration=0.3, easing="out_cubic")
+            else:
+                self._page_step(-1)
+
+        def action_scroll_home(self) -> None:
+            self._reader().scroll_home(animate=True, duration=0.4, easing="out_cubic")
+
+        def action_scroll_end(self) -> None:
+            self._reader().scroll_end(animate=True, duration=0.4, easing="out_cubic")
+
+        # -- download ------------------------------------------------------ #
+        def action_download(self) -> None:
+            if self._local_cbz:
+                self.notify("This chapter is already downloaded.", severity="information")
+                return
+            if not self._pages or self._source is None:
+                self.notify("Nothing to download yet.", severity="warning")
+                return
+            self.notify(
+                f"Downloading {self.chapter.title or self.chapter.id}…", severity="information"
+            )
+            self._save_cbz()
+
+        @work(exclusive=False, thread=True, group="dl")
+        def _save_cbz(self) -> None:
+            from nyora.cli import _download_cbz
+
+            app: Any = self.app
+            manga = self._details.manga if self._details else self.chapter
+            cbz = app._dl.cbz_path(self._source.name, manga, self.chapter)
+            saved, _total = _download_cbz(self._pages, cbz)
+            app._dl.record(self._source.id, self._source.name, manga, self.chapter, cbz, saved)
+            self.app.call_from_thread(
+                self.notify, f"Saved {cbz.name} ({saved} pages) → Downloads/nyora-tui",
+                severity="information",
+            )
 
     NyoraTui().run()
     return True
-
-
-def _run_rich() -> bool:
-    try:
-        from rich.console import Console
-        from rich.panel import Panel
-        from rich.prompt import Prompt
-        from rich.table import Table
-        from rich.markup import escape
-    except ImportError:
-        return False
-
-    console = Console()
-
-    def choose(items: list, render, prompt: str, allow_query: bool = False):
-        """Render a numbered list; return (index|None, query_string)."""
-        while True:
-            table = Table(show_header=True, header_style="bold cyan")
-            table.add_column("#", justify="right", style="dim")
-            for col in render.columns:
-                table.add_column(col)
-            for i, item in enumerate(items[:60], 1):
-                table.add_row(str(i), *[escape(str(x)) for x in render.row(item)])
-            console.print(table)
-            hint = "number to select"
-            if allow_query:
-                hint += ", text to (re)search"
-            ans = Prompt.ask(f"{prompt} ([dim]{hint}, 'b' back, 'q' quit[/dim])").strip()
-            if ans.lower() == "q":
-                raise SystemExit(0)
-            if ans.lower() == "b":
-                return None, None
-            if ans.isdigit():
-                idx = int(ans) - 1
-                if 0 <= idx < min(len(items), 60):
-                    return idx, None
-                console.print("[red]Out of range.[/red]")
-                continue
-            if allow_query:
-                return None, ans
-            console.print("[red]Enter a number.[/red]")
-
-    class _R:
-        def __init__(self, columns, row):
-            self.columns = columns
-            self.row = row
-
-    from nyora_tui.sync import TuiSync
-
-    sync = TuiSync()
-
-    console.print(Panel.fit("[bold]Nyora[/bold] terminal reader\nNyora cloud sources"))
-
-    with Nyora() as client:
-        sources, err = _safe(_list_sources, client)
-        if err:
-            console.print(f"[red]Failed to load sources: {escape(err)}[/red]")
-            return True
-
-        while True:  # source loop
-            who = f" [green]({sync.email})[/green]" if sync.is_signed_in else ""
-            q = Prompt.ask(
-                f"Filter sources{who} "
-                "([dim]blank = all, 'sync' account, 'lib' library, 'q' quit[/dim])"
-            ).strip()
-            if q.lower() == "q":
-                break
-            if q.lower() in ("sync", "account"):
-                _rich_account(console, sync, Prompt)
-                continue
-            if q.lower() in ("lib", "library"):
-                _rich_library(console, client, sync, choose, _R, Panel)
-                continue
-            filtered = _filter_sources(sources, q)
-            if not filtered:
-                console.print("[yellow]No sources matched.[/yellow]")
-                continue
-            src_render = _R(
-                ["Name", "Lang", "ID"],
-                lambda s: (s.name, s.lang or "-", s.id),
-            )
-            idx, _ = choose(filtered, src_render, "Pick a source")
-            if idx is None:
-                continue
-            source = filtered[idx]
-            _rich_browse(console, client, source, choose, _R, Panel, sync)
-    return True
-
-
-def _rich_account(console, sync, Prompt) -> None:
-    """Sign in/out of Nyora cloud sync."""
-    if sync.is_signed_in:
-        console.print(f"Signed in as [green]{sync.email}[/green].")
-        if Prompt.ask("Sign out? ([dim]y/N[/dim])").strip().lower() == "y":
-            sync.sign_out()
-            console.print("[yellow]Signed out.[/yellow]")
-        return
-    email = Prompt.ask("Email ([dim]blank to cancel[/dim])").strip()
-    if not email:
-        return
-    password = Prompt.ask("Password", password=True).strip()
-    try:
-        sync.sign_in(email, password)
-        console.print(f"[green]Signed in as {sync.email}.[/green]")
-    except Exception as e:  # noqa: BLE001 - surface any auth failure to the user
-        console.print(f"[red]Sign-in failed: {e}[/red]")
-
-
-def _rich_library(console, client, sync, choose, _R, Panel) -> None:
-    """Browse the synced favourites library."""
-    if not sync.is_signed_in:
-        console.print("[yellow]Sign in first ('sync').[/yellow]")
-        return
-    items, err = _safe(sync.library)
-    if err:
-        console.print(f"[red]Failed to load library: {err}[/red]")
-        return
-    if not items:
-        console.print("[yellow]Library is empty. Favourite manga with 'f' in details.[/yellow]")
-        return
-    render = _R(["Title", "Source"], lambda it: (it["title"], it["source"] or "-"))
-    while True:
-        idx, _ = choose(items, render, "Pick a library manga")
-        if idx is None:
-            return
-        it = items[idx]
-        details, derr = _safe(_fetch_details, client, it["source"], it["url"], it["title"])
-        if derr or details is None:
-            console.print(f"[red]Failed to load details: {derr}[/red]")
-            continue
-        console.print(Panel.fit(f"[bold]{it['title']}[/bold]\n{len(details.chapters)} chapters"))
-
-
-def _rich_browse(console, client, source, choose, _R, Panel, sync=None) -> None:
-    from rich.prompt import Prompt
-    from rich.markup import escape
-
-    query = ""
-    page = 1
-    while True:  # results loop
-        result, err = _safe(_fetch_results, client, source.id, query, page)
-        if err:
-            console.print(f"[red]Error loading results: {escape(err)}[/red]")
-            new_q = Prompt.ask("Search query ([dim]blank popular, 'b' back[/dim])").strip()
-            if new_q.lower() == "b":
-                return
-            query, page = new_q, 1
-            continue
-        if not result.entries:
-            console.print("[yellow]No results.[/yellow]")
-        mode = "search:" + escape(query) if query.strip() else "popular"
-        console.print(f"[cyan]{escape(source.name)}[/cyan] - {mode} - page {page}")
-        render = _R(
-            ["Title", "Tags"],
-            lambda m: (
-                m.title,
-                ", ".join(t.get("title", "") for t in m.tags[:3] if t.get("title")),
-            ),
-        )
-        prompt = "Pick manga"
-        if result.has_next_page:
-            prompt += " ([green]+[/green] next page"
-            prompt += ", [green]-[/green] prev)" if page > 1 else ")"
-        ans_idx, ans_q = _choose_with_paging(console, result.entries, render, prompt, choose)
-        if ans_idx == "next":
-            page += 1
-            continue
-        if ans_idx == "prev":
-            page = max(1, page - 1)
-            continue
-        if ans_idx is None and ans_q is None:
-            return  # back
-        if ans_q is not None:
-            query, page = ans_q, 1
-            continue
-        manga = result.entries[ans_idx]
-        _rich_details(console, client, source, manga, choose, _R, Panel, sync)
-
-
-def _choose_with_paging(console, items, render, prompt, choose):
-    """Wrap choose() but intercept +/- for paging before delegating."""
-    from rich.prompt import Prompt
-    from rich.table import Table
-    from rich.markup import escape
-
-    table = Table(show_header=True, header_style="bold cyan")
-    table.add_column("#", justify="right", style="dim")
-    for col in render.columns:
-        table.add_column(col)
-    for i, item in enumerate(items[:60], 1):
-        table.add_row(str(i), *[escape(str(x)) for x in render.row(item)])
-    console.print(table)
-    while True:
-        ans = Prompt.ask(
-            f"{prompt} ([dim]number, text to search, 'b' back, 'q' quit[/dim])"
-        ).strip()
-        low = ans.lower()
-        if low == "q":
-            raise SystemExit(0)
-        if low == "b":
-            return None, None
-        if ans == "+":
-            return "next", None
-        if ans == "-":
-            return "prev", None
-        if ans.isdigit():
-            idx = int(ans) - 1
-            if 0 <= idx < min(len(items), 60):
-                return idx, None
-            console.print("[red]Out of range.[/red]")
-            continue
-        return None, ans
-
-
-def _rich_details(console, client, source, manga, choose, _R, Panel, sync=None) -> None:
-    from rich.markup import escape
-    from rich.prompt import Prompt
-    details, err = _safe(_fetch_details, client, source.id, manga.url, manga.title)
-    if err:
-        console.print(f"[red]Failed to load details: {escape(err)}[/red]")
-        return
-    m = details.manga
-    authors = ", ".join(m.authors) if m.authors else "Unknown"
-    tags = ", ".join(t.get("title", "") for t in m.tags if t.get("title"))
-    body = [
-        f"[bold]{escape(m.title)}[/bold]",
-        f"Authors: {escape(authors)}",
-        f"State: {escape(m.state or 'n/a')}",
-    ]
-    if tags:
-        body.append(f"Tags: {escape(tags)}")
-    body.append("")
-    body.append(escape(m.description or "(no description)"))
-    console.print(Panel("\n".join(body), title="Details"))
-
-    if sync is not None and sync.is_signed_in:
-        if Prompt.ask("Favourite to library? ([dim]f = yes, enter = skip[/dim])").strip().lower() == "f":
-            _, ferr = _safe(sync.favourite, source.id, m)
-            console.print(
-                f"[red]Sync failed: {escape(str(ferr))}[/red]" if ferr else "[green]Added to library.[/green]"
-            )
-
-    if not details.chapters:
-        console.print("[yellow]No chapters found.[/yellow]")
-        return
-    render = _R(
-        ["Chapter", "Branch"],
-        lambda c: (c.title or c.id, c.branch or "-"),
-    )
-    while True:  # chapter loop
-        idx, _ = choose(details.chapters, render, "Pick a chapter")
-        if idx is None:
-            return
-        chapter = details.chapters[idx]
-        # Inner loop: reading a chapter can hand back the next/previous chapter
-        # (order-independent) so the reader flows without returning to the list.
-        while chapter is not None:
-            chapter = _rich_pages(console, client, source, chapter, details)
-
-
-def _rich_pages(console, client, source, chapter, details):
-    from rich.table import Table
-    from rich.prompt import Prompt
-    from rich.markup import escape
-    from pathlib import Path
-    from nyora.cli import _download_pages
-
-    pages, err = _safe(_fetch_pages, client, source.id, chapter.url, chapter.branch)
-    if err:
-        console.print(f"[red]Failed to load pages: {escape(err)}[/red]")
-        return None
-    table = Table(title=f"{escape(chapter.title or chapter.id)} - {len(pages)} pages")
-    table.add_column("#", justify="right", style="dim")
-    table.add_column("Image URL")
-    for i, p in enumerate(pages, 1):
-        table.add_row(str(i), escape(p.url))
-    console.print(table)
-
-    while True:
-        # next/previous are resolved order-independently, so they always move to
-        # the later/earlier chapter regardless of how the source sorted the list.
-        nxt = details.next_chapter(chapter)
-        prv = details.previous_chapter(chapter)
-        opts = []
-        if nxt:
-            opts.append("[green]n[/green] next chapter")
-        if prv:
-            opts.append("[green]p[/green] prev chapter")
-        opts.append("[green]d[/green] download")
-        opts.append("[green]Enter[/green] back")
-        ans = Prompt.ask(" · ".join(opts)).strip().lower()
-        if ans == "n" and nxt:
-            return nxt
-        if ans == "p" and prv:
-            return prv
-        if ans == "d":
-            console.print("[cyan]Downloading...[/cyan]")
-            out_dir = Path("nyora-download").expanduser()
-            out_dir.mkdir(parents=True, exist_ok=True)
-            saved = _download_pages(pages, out_dir)
-            console.print(f"[green]Saved {len(saved)} pages to {out_dir}[/green]")
-            continue
-        return None
-
-
-# --------------------------------------------------------------------------- #
-# Plain-text fallback (no rich, no textual).
-# --------------------------------------------------------------------------- #
-def _run_plain() -> None:
-    print("Nyora terminal reader (plain mode)")
-    print(_INSTALL_HINT + " for the full TUI experience.\n")
-
-    def pick(items, render, label):
-        for i, item in enumerate(items[:60], 1):
-            print(f"{i:>3}. {render(item)}")
-        while True:
-            ans = input(f"{label} (number, text=search, b=back, q=quit): ").strip()
-            if ans.lower() == "q":
-                raise SystemExit(0)
-            if ans.lower() == "b":
-                return None, None
-            if ans.isdigit():
-                idx = int(ans) - 1
-                if 0 <= idx < min(len(items), 60):
-                    return idx, None
-                print("Out of range.")
-                continue
-            return None, ans
-
-    with Nyora() as client:
-        sources, err = _safe(_list_sources, client)
-        if err:
-            print(f"Failed to load sources: {err}")
-            return
-        while True:
-            q = input("\nFilter sources (blank=all, q=quit): ").strip()
-            if q.lower() == "q":
-                return
-            filtered = _filter_sources(sources, q)
-            if not filtered:
-                print("No sources matched.")
-                continue
-            idx, _ = pick(
-                filtered, lambda s: f"{s.name} [{s.lang or '-'}] ({s.id})", "Pick source"
-            )
-            if idx is None:
-                continue
-            _plain_browse(client, filtered[idx], pick)
-
-
-def _plain_browse(client, source, pick) -> None:
-    query = ""
-    page = 1
-    while True:
-        result, err = _safe(_fetch_results, client, source.id, query, page)
-        if err:
-            print(f"Error: {err}")
-            nq = input("Search (blank=popular, b=back): ").strip()
-            if nq.lower() == "b":
-                return
-            query, page = nq, 1
-            continue
-        mode = f"search:{query}" if query.strip() else "popular"
-        print(f"\n{source.name} - {mode} - page {page}")
-        if not result.entries:
-            print("No results.")
-        idx, nq = pick(result.entries, lambda m: m.title, "Pick manga")
-        if idx is None and nq is None:
-            return
-        if nq is not None:
-            query, page = nq, 1
-            continue
-        _plain_details(client, source, result.entries[idx], pick)
-
-
-def _plain_details(client, source, manga, pick) -> None:
-    details, err = _safe(_fetch_details, client, source.id, manga.url, manga.title)
-    if err:
-        print(f"Failed to load details: {err}")
-        return
-    m = details.manga
-    print(f"\n=== {m.title} ===")
-    print(f"Authors: {', '.join(m.authors) if m.authors else 'Unknown'}")
-    print(f"State: {m.state or 'n/a'}")
-    print(f"\n{m.description or '(no description)'}\n")
-    if not details.chapters:
-        print("No chapters found.")
-        return
-    while True:
-        idx, _ = pick(
-            details.chapters,
-            lambda c: f"{c.title or c.id}" + (f" <{c.branch}>" if c.branch else ""),
-            "Pick chapter",
-        )
-        if idx is None:
-            return
-        chapter = details.chapters[idx]
-        while chapter is not None:
-            chapter = _plain_pages(client, source, chapter, details)
-
-
-def _plain_pages(client, source, chapter, details):
-    from pathlib import Path
-    from nyora.cli import _download_pages
-
-    pages, err = _safe(_fetch_pages, client, source.id, chapter.url, chapter.branch)
-    if err:
-        print(f"Failed to load pages: {err}")
-        return None
-    print(f"\n{chapter.title or chapter.id} - {len(pages)} pages")
-    for i, p in enumerate(pages, 1):
-        print(f"{i:>3}. {p.url}")
-
-    while True:
-        # Order-independent next/previous — correct on ascending and descending sources.
-        nxt = details.next_chapter(chapter)
-        prv = details.previous_chapter(chapter)
-        opts = []
-        if nxt:
-            opts.append("n=next")
-        if prv:
-            opts.append("p=prev")
-        opts.append("d=download")
-        opts.append("Enter=back")
-        ans = input("\n" + ", ".join(opts) + ": ").strip().lower()
-        if ans == "n" and nxt:
-            return nxt
-        if ans == "p" and prv:
-            return prv
-        if ans == "d":
-            print("Downloading...")
-            out_dir = Path("nyora-download").expanduser()
-            out_dir.mkdir(parents=True, exist_ok=True)
-            saved = _download_pages(pages, out_dir)
-            print(f"Saved {len(saved)} pages to {out_dir}")
-            continue
-        return None
-        input("Press Enter to go back...")
 
 
 if __name__ == "__main__":
