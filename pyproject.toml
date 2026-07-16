@@ -1,6 +1,6 @@
 [project]
 name = "nyora"
-version = "2.1.2"
+version = "2.1.3"
 description = "The manga reader SDK for Python — build a manga/manhwa/manhua reader with 390 working sources across 40 languages through one typed API — fully self-contained (bundles & auto-launches its own local parser engine, no cloud required) or pointed at any server. A programmatic Tachiyomi/Mihon/Kotatsu alternative, with a CLI and terminal reader (TUI)."
 readme = "README.md"
 requires-python = ">=3.10"
