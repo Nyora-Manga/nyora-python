@@ -461,10 +461,10 @@ nyora-cli version
 ```
 
 ```text
-nyora 2.1.0
+nyora 2.1.4
 ```
 
-**JSON** emits `{"package": "2.1.0"}`. The global `-V`/`--version` flag prints the
+**JSON** emits `{"package": "2.1.4"}`. The global `-V`/`--version` flag prints the
 same version string.
 
 ---

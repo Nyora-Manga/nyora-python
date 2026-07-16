@@ -2,6 +2,14 @@
 
 **Read like the world can wait.**
 
+<p align="center">
+  <video src="https://github.com/Nyora-Manga/nyora-python/raw/main/docs/screenshots/nyora-demo.mp4" controls muted width="90%"></video>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Nyora-Manga/nyora-python/raw/main/docs/screenshots/nyora-demo.mp4">▶ Watch the demo</a>
+</p>
+
 `nyora` is the official Python package for **Nyora** — a fast, free, ad-free,
 open-source manga engine. It is **self-contained**: `pip install nyora` bundles the
 kotatsu-parsers engine and launches it locally on demand (a JRE is auto-downloaded
