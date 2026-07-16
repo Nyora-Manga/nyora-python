@@ -121,6 +121,10 @@ EN: dict[str, str] = {
     "reader.already_downloaded": "This chapter is already downloaded.",
     "reader.nothing_to_download": "Nothing to download yet.",
     "reader.no_offline_pages": "No downloaded pages found on disk.",
+    "reader.saved_full": "Saved {name} ({count} pages)",
+    "reader.no_pages_error": "No pages: {error}",
+    "reader.no_pages_title": "No pages in this chapter.",
+    "reader.no_pages_hint": "Try another chapter or source.",
     "reader.foot_hint": "m mode · f fit · n/p chapter · d save",
     "reader.pos_webtoon": "{loaded}/{total} loaded · scroll {pct}%",
     "reader.pos_paged": "page {n}/{total}",
@@ -163,6 +167,15 @@ EN: dict[str, str] = {
     # -- keybindings help ----------------------------------------------------
     "keys.title": "Keyboard shortcuts",
     "keys.hint": "press ? or esc to close",
+    "keys.h_navigate": "Navigate",
+    "keys.h_sections": "Sections",
+    "keys.h_browse": "Browse",
+    "keys.h_details": "Details",
+    "keys.h_reader": "Reader — any mode",
+    "keys.h_reader_webtoon": "Reader — webtoon",
+    "keys.h_reader_paged": "Reader — paged / paged-rtl",
+    "keys.h_library": "Library",
+    "keys.h_global": "Global",
 }
 
 # ``(code, endonym)`` — the languages the interface can be shown in, labelled in

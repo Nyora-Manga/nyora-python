@@ -482,64 +482,71 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         }
         """
 
-        _LEFT = [
-            "[b $accent]Navigate[/]",
-            "  [b]j k[/] / [b]↑ ↓[/]    move in a list",
-            "  [b]g[/] / [b]G[/]        top / bottom",
-            "  [b]↓[/] / [b]esc[/]      filter box → source list",
-            "  [b]tab[/]           cycle panes",
-            "  [b]enter[/]         open selection",
-            "  [b]esc[/]           back",
-            "",
-            "[b $accent]Sections[/]",
-            "  [b]1[/]  browse / sources     [b]2[/]  library",
-            "  [b]3[/]  history              [b]a[/]  account / sync",
-            "  [b]t[/]  colour theme         [b]L[/]  language navigator",
-            "  [b],[/]  settings             [b]?[/]  this help",
-            "",
-            "[b $accent]Browse[/]",
-            "  [b]/[/]  search             [b]f[/]  filter sources",
-            "  [b]p[/]  popular            [b]l[/]  latest",
-            "  [b]n[/] / [b]N[/]  next / prev page",
-            "  [b]r[/]  refresh            [b]x[/]  toggle 18+",
-            "",
-            "[b $accent]Details[/]",
-            "  [b]enter[/]  read chapter     [b]f[/]  favourite",
-            "  [b]d[/]      download chapter",
-        ]
-        _RIGHT = [
-            "[b $accent]Reader — any mode[/]",
-            "  [b]m[/]  cycle mode (webtoon/paged/paged-rtl)",
-            "  [b]f[/]  fit (width / height)",
-            "  [b]n[/] / [b]p[/]  next / previous chapter",
-            "  [b]d[/]  save chapter to Downloads",
-            "  [b]esc[/]  back",
-            "",
-            "[b $accent]Reader — webtoon[/]",
-            "  [b]j k[/] / [b]↑ ↓[/]  scroll     [b]space[/]  page down",
-            "  [b]b[/]  page up          [b]ctrl+d/u[/]  half page",
-            "  [b]g[/] / [b]G[/]  top / bottom",
-            "",
-            "[b $accent]Reader — paged / paged-rtl[/]",
-            "  [b]← →[/] (or [b]h l[/])  turn page (RTL-aware)",
-            "  [b]space[/]  next page     [b]g[/] / [b]G[/]  first / last",
-            "",
-            "[b $accent]Library[/]",
-            "  [b]tab[/] / [b]← →[/]  switch Favourites / Downloads",
-            "  [b]enter[/]  open        [b]u[/] / [b]del[/]  remove",
-            "  [b]r[/]  sync with cloud",
-            "",
-            "[b $accent]Global[/]",
-            "  [b]t[/]  theme (+[b]space[/] light/dark)   [b]ctrl+p[/]  palette",
-            "  [b]?[/] / [b]F1[/]  this screen        [b]q[/]  quit",
-        ]
+        @staticmethod
+        def _hdr(key: str) -> str:
+            return f"[b $accent]{_esc(t(key))}[/]"
+
+        def _left(self) -> list[str]:
+            return [
+                self._hdr("keys.h_navigate"),
+                "  [b]j k[/] / [b]↑ ↓[/]    move in a list",
+                "  [b]g[/] / [b]G[/]        top / bottom",
+                "  [b]↓[/] / [b]esc[/]      filter box → source list",
+                "  [b]tab[/]           cycle panes",
+                "  [b]enter[/]         open selection",
+                "  [b]esc[/]           back",
+                "",
+                self._hdr("keys.h_sections"),
+                "  [b]1[/]  browse / sources     [b]2[/]  library",
+                "  [b]3[/]  history              [b]a[/]  account / sync",
+                "  [b]t[/]  colour theme         [b]L[/]  language navigator",
+                "  [b],[/]  settings             [b]?[/]  this help",
+                "",
+                self._hdr("keys.h_browse"),
+                "  [b]/[/]  search             [b]f[/]  filter sources",
+                "  [b]p[/]  popular            [b]l[/]  latest",
+                "  [b]n[/] / [b]N[/]  next / prev page",
+                "  [b]r[/]  refresh            [b]x[/]  toggle 18+",
+                "",
+                self._hdr("keys.h_details"),
+                "  [b]enter[/]  read chapter     [b]f[/]  favourite",
+                "  [b]d[/]      download chapter",
+            ]
+
+        def _right(self) -> list[str]:
+            return [
+                self._hdr("keys.h_reader"),
+                "  [b]m[/]  cycle mode (webtoon/paged/paged-rtl)",
+                "  [b]f[/]  fit (width / height)",
+                "  [b]n[/] / [b]p[/]  next / previous chapter",
+                "  [b]d[/]  save chapter to Downloads",
+                "  [b]esc[/]  back",
+                "",
+                self._hdr("keys.h_reader_webtoon"),
+                "  [b]j k[/] / [b]↑ ↓[/]  scroll     [b]space[/]  page down",
+                "  [b]b[/]  page up          [b]ctrl+d/u[/]  half page",
+                "  [b]g[/] / [b]G[/]  top / bottom",
+                "",
+                self._hdr("keys.h_reader_paged"),
+                "  [b]← →[/] (or [b]h l[/])  turn page (RTL-aware)",
+                "  [b]space[/]  next page     [b]g[/] / [b]G[/]  first / last",
+                "",
+                self._hdr("keys.h_library"),
+                "  [b]tab[/] / [b]← →[/]  switch Favourites / Downloads",
+                "  [b]enter[/]  open        [b]u[/] / [b]del[/]  remove",
+                "  [b]r[/]  sync with cloud",
+                "",
+                self._hdr("keys.h_global"),
+                "  [b]t[/]  theme (+[b]space[/] light/dark)   [b]ctrl+p[/]  palette",
+                "  [b]?[/] / [b]F1[/]  this screen        [b]q[/]  quit",
+            ]
 
         def compose(self) -> ComposeResult:
             yield Header(show_clock=True)
-            yield Static(f"❀ {t('keys.title')}", id="keys_title")
+            yield Static(f"❀ {_esc(t('keys.title'))}", id="keys_title")
             with Horizontal(id="keys_cols"):
-                yield Static("\n".join(self._LEFT), classes="keys_col")
-                yield Static("\n".join(self._RIGHT), classes="keys_col")
+                yield Static("\n".join(self._left()), classes="keys_col")
+                yield Static("\n".join(self._right()), classes="keys_col")
             yield Static(f"[dim]{_esc(t('keys.hint'))}[/]", id="keys_foot")
             yield Footer()
 
@@ -2137,7 +2144,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             )
             if err or not pages:
                 self.app.call_from_thread(
-                    self.notify, f"No pages: {_esc(str(err or 'empty'))}", severity="error"
+                    self.notify,
+                    t("reader.no_pages_error", error=str(err or "empty")),
+                    severity="error",
                 )
                 return
             cbz = app._dl.cbz_path(self._source.name, manga, chapter)
@@ -2147,7 +2156,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def _after_download(self, chapter, count: int, name: str) -> None:
             self.notify(
-                f"Saved {name} ({count} pages) → Downloads/nyora-tui", severity="information"
+                t("reader.saved_full", name=name, count=count) + " → Downloads/nyora-tui",
+                severity="information",
             )
             if self._details is not None:
                 self._render_chapters()  # show the ⤓ marker
@@ -2255,7 +2265,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 "PAGED": t("reader.mode_paged"),
                 "PAGED_RTL": t("reader.mode_paged_rtl"),
             }[self._mode]
-            offline = " [success]· offline[/]" if self._local_cbz else ""
+            offline = f" [success]· {_esc(t('reader.offline'))}[/]" if self._local_cbz else ""
             self.query_one("#reader_head", Static).update(
                 f"[b]{title}[/]   [dim]· {mode} · {self._fit.lower()} · img:[/] {proto}{offline}"
             )
@@ -2334,9 +2344,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             if not self._pages:
                 container.mount(
                     Static(
-                        "[warning]No pages returned for this chapter.[/]\n"
-                        "[dim]The source may gate this chapter, or the list was empty — "
-                        "try another chapter or source.[/]"
+                        f"[warning]{_esc(t('reader.no_pages_title'))}[/]\n"
+                        f"[dim]{_esc(t('reader.no_pages_hint'))}[/]"
                     )
                 )
                 self._done_flag = True
@@ -2682,7 +2691,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             saved, _total = _download_cbz(self._pages, cbz)
             app._dl.record(self._source.id, self._source.name, manga, self.chapter, cbz, saved)
             self.app.call_from_thread(
-                self.notify, f"Saved {cbz.name} ({saved} pages) → Downloads/nyora-tui",
+                self.notify,
+                t("reader.saved_full", name=cbz.name, count=saved) + " → Downloads/nyora-tui",
                 severity="information",
             )
 
