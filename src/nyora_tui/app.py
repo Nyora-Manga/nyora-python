@@ -342,13 +342,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             or "kitty" in _term
             or _os.environ.get("KITTY_WINDOW_ID")
         )
-        # Windows Terminal has exported WT_SESSION since 2019, but Sixel only
-        # landed in WT 1.22 (Feb 2024) and WT exposes no version variable — so
-        # WT_SESSION alone must NOT force Sixel (older WT would spray raw escape
-        # codes). We instead default to the capability-probing auto renderer and
-        # only upgrade WT to Sixel when the pixel-geometry query below actually
-        # answers (a modern, graphics-capable session). See the post-probe block.
-        _windows_terminal = bool(_os.environ.get("WT_SESSION"))
+        # Windows Terminal: WT_SESSION has been set since 2019 but Sixel only
+        # landed in WT 1.22 (Feb 2024), and WT exposes no version variable — so we
+        # must NOT force Sixel from WT_SESSION (older WT would spray raw escape
+        # codes). We also can't reliably tell whether a WT answered the geometry
+        # query, because textual-image's get_cell_size() silently returns a VT340
+        # default when unanswered. So on Windows we trust the capability-probing
+        # auto renderer (which degrades to half-cell if graphics aren't detected)
+        # and let capable-WT users opt in with NYORA_TUI_IMAGE=sixel.
         _forced = {
             "tgp": _TGPImage,
             "sixel": _SixelImage,
@@ -369,24 +370,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 _PROTOCOL = _AutoRenderable.__module__.rsplit(".", 1)[-1]
             except Exception:  # noqa: BLE001
                 _PROTOCOL = "auto"
-        _cell_ok = False
         try:
             from textual_image._terminal import get_cell_size
 
             cell = get_cell_size()
             if cell and cell.width and cell.height:
                 _CELL_W, _CELL_H = int(cell.width), int(cell.height)
-                _cell_ok = True
         except Exception:  # noqa: BLE001 - no TTY / query unsupported
             pass
-        # Modern Windows Terminal answers the pixel-geometry query; a pre-Sixel WT
-        # (or classic conhost) does not, so it safely stays on auto/half-cell.
-        if (
-            _windows_terminal and _cell_ok and _override not in _forced
-            and not _kitty_like and _IMAGE_CLS is _AutoImage
-        ):
-            _IMAGE_CLS = _SixelImage
-            _PROTOCOL = "sixel"
     except Exception:  # noqa: BLE001 - textual-image absent or no graphics support
         _IMAGE_CLS = None
 
@@ -994,7 +985,12 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self.action_start()
 
         def action_cancel(self) -> None:
-            """Close without saving, reverting the live theme + UI-language preview."""
+            """Escape: cancel in Settings (revert preview); complete onboarding on first run."""
+            if not self._settings:
+                # First run: Escape means "start with these choices" — otherwise
+                # onboarding never completes and re-triggers on every launch.
+                self.action_start()
+                return
             from nyora_tui.i18n import set_language
 
             if self._orig_theme is not None:
@@ -1273,7 +1269,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._items = self._lib.history()
             if not self._items:
                 msg.update(f"[dim]{t('history.empty')}[/]")
-                self.query_one("#hist_head", Static).update("History")
+                self.query_one("#hist_head", Static).update(t("history.title"))
                 return
             msg.update("")
             for i, it in enumerate(self._items):
