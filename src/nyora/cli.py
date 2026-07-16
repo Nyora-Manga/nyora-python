@@ -80,12 +80,13 @@ BROWSER_UA = (
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for the ``nyora-cli`` command.
+    """Entry point for the ``nyora`` / ``nyora-cli`` commands.
 
-    With no subcommand, launch the interactive terminal reader
-    (:func:`nyora_tui.app.main`). Otherwise dispatch to the named subcommand;
-    ``nyora-cli --help`` lists them. ``NyoraError``/``LookupError`` map to exit
-    code 1, argparse usage errors to 2, and ``Ctrl+C`` to 130.
+    A bare **``nyora``** (no subcommand) launches the interactive terminal reader
+    (:func:`nyora_tui.app.main`); a bare **``nyora-cli``** prints CLI help — it is
+    the command-line tool, not the reader (use ``nyora`` or ``nyora-tui`` for
+    that). Otherwise dispatch to the named subcommand. ``NyoraError``/
+    ``LookupError`` map to exit code 1, argparse usage errors to 2, ``Ctrl+C`` to 130.
     """
     parser = _build_parser()
     import argcomplete  # core dep; no-op unless the shell requests completion
@@ -93,6 +94,12 @@ def main(argv: list[str] | None = None) -> int:
     argcomplete.autocomplete(parser)
     args = parser.parse_args(argv)
     if not getattr(args, "command", None):
+        # `nyora` opens the TUI; `nyora-cli` alone shows help (it's the CLI).
+        import os
+
+        if os.path.basename((sys.argv[0] or "").lower()).startswith("nyora-cli"):
+            parser.print_help()
+            return 0
         return _launch_tui()
 
     try:

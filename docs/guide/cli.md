@@ -13,12 +13,12 @@ shipped with the Nyora Python package.
 This page documents only the CLI tool.
 ```
 
-```{admonition} Bare `nyora-cli` launches the TUI
+```{admonition} Bare `nyora` launches the TUI
 :class: tip
 
-Running **`nyora-cli` with no subcommand launches the interactive terminal
-reader (TUI)** — it does not print help and exit. See the [TUI guide](tui.md).
-To script Nyora instead, always pass a subcommand
+A bare **`nyora`** (no subcommand) launches the interactive terminal reader
+(TUI); **`nyora-cli`** on its own prints this help. See the [TUI guide](tui.md)
+for the reader. To script Nyora, always pass a subcommand
 (`sources`, `search`, `popular`, …).
 ```
 
@@ -52,7 +52,7 @@ nyora-cli completion            # prints the setup line for your shell
 
 ```text
 nyora-cli [--json] <command> [options]
-nyora-cli                       # no command -> launches the TUI
+nyora                           # no command -> launches the TUI
 nyora-cli --help                # lists all commands
 nyora-cli -V | --version        # print version and exit
 ```
@@ -473,7 +473,7 @@ same version string.
 
 | Code | Meaning |
 | ---- | ------- |
-| `0` | Success. For `download`, at least one page was saved. The bare-`nyora-cli` TUI also returns `0` on a clean exit and when no interactive terminal is attached. |
+| `0` | Success. For `download`, at least one page was saved. The bare-`nyora` TUI also returns `0` on a clean exit and when no interactive terminal is attached. |
 | `1` | A {py:class}`~nyora.errors.NyoraError` or `LookupError` was raised — e.g. an unresolved `-s/--source`, a network/cloud failure, or (for `download`) no pages could be saved. The message is printed to stderr as `error: <message>`. |
 | `2` | argparse usage error (unknown command/option, missing required argument). |
 | `130` | Interrupted with `Ctrl+C` (`KeyboardInterrupt`). |

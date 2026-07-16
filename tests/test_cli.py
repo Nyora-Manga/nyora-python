@@ -162,10 +162,27 @@ def test_bare_invocation_launches_tui(monkeypatch: pytest.MonkeyPatch) -> None:
     import nyora_tui.app as tui_app
 
     monkeypatch.setattr(tui_app, "main", fake_tui_main)
+    monkeypatch.setattr("sys.argv", ["nyora"])  # invoked as bare `nyora`
 
     rc = cli.main([])
     assert rc == 7
     assert len(calls) == 1
+
+
+def test_bare_nyora_cli_prints_help_not_tui(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`nyora-cli` (no subcommand) prints help — only bare `nyora` opens the TUI."""
+    import nyora_tui.app as tui_app
+
+    launched = []
+    monkeypatch.setattr(tui_app, "main", lambda *a, **k: launched.append(1))
+    monkeypatch.setattr("sys.argv", ["nyora-cli"])  # invoked as `nyora-cli`
+
+    rc = cli.main([])
+    assert rc == 0
+    assert not launched, "nyora-cli must not launch the TUI"
+    assert "usage: nyora-cli" in capsys.readouterr().out
 
 
 def test_bare_invocation_none_return_is_zero(monkeypatch: pytest.MonkeyPatch) -> None:

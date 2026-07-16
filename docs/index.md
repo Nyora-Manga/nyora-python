@@ -64,8 +64,8 @@ nyora-cli --json grab -s mangadex "berserk" -c 1 -o ./out   # search → downloa
 
 ### 📖 The terminal reader — bare `nyora`
 
-Running `nyora` (or `nyora-cli`) with **no subcommand** — or the explicit
-`nyora-tui` — launches the full interactive reader: browse and search sources,
+Running a bare `nyora` with **no subcommand** — or the explicit `nyora-tui` —
+launches the full interactive reader: browse and search sources,
 read chapters inline (three reader modes), manage a local library and downloads,
 and sign in to sync.
 

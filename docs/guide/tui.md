@@ -21,14 +21,15 @@ The TUI is part of the base install (`pip install nyora` pulls in `rich` and
 There are two equivalent ways to launch it:
 
 ```bash
-nyora-cli      # bare command, no subcommand -> launches the TUI
+nyora          # bare command, no subcommand -> launches the TUI
 nyora-tui      # dedicated launcher
 ```
 
 ```{important}
-Running **`nyora-cli` with no subcommand launches the TUI.** Any subcommand
-(`nyora-cli sources`, `nyora-cli search ...`, …) runs the non-interactive CLI
-instead — see the [CLI manual](cli.md). Both `nyora-cli` and `nyora-tui`
+A bare **`nyora`** (no subcommand) launches the TUI. **`nyora-cli`** on its own
+prints CLI help — it is the command-line tool, not the reader — and any
+subcommand (`nyora-cli sources`, `nyora-cli search ...`, …) runs the
+non-interactive CLI (see the [CLI manual](cli.md)). `nyora` and `nyora-tui`
 ultimately call {py:func}`nyora_tui.app.main`.
 ```
 
@@ -44,11 +45,11 @@ Instead it prints a short notice and exits cleanly with code `0`:
 ```text
 Nyora terminal reader needs an interactive terminal (a TTY).
 stdout is not a TTY here (piped, redirected, or non-interactive shell).
-Run 'nyora-cli' (or 'nyora-tui') directly in a terminal to use it.
+Run 'nyora' (or 'nyora-tui') directly in a terminal to use it.
 For scripting, use subcommands instead, e.g. 'nyora-cli sources'.
 ```
 
-This is intentional: it means a bare `nyora-cli` is always safe to run from a
+This is intentional: it means a bare `nyora` is always safe to run from a
 script or hook without hanging or crashing. For automation, use the CLI
 subcommands (with `--json`) or the [library](library.md) directly.
 

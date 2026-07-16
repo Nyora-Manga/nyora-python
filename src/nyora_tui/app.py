@@ -191,7 +191,7 @@ def _print_no_tty_notice() -> None:
     """Explain that the TUI needs a real terminal and how to launch it."""
     print("Nyora terminal reader needs an interactive terminal (a TTY).")
     print("stdout is not a TTY here (piped, redirected, or non-interactive shell).")
-    print("Run 'nyora-cli' (or 'nyora-tui') directly in a terminal to use it.")
+    print("Run 'nyora' (or 'nyora-tui') directly in a terminal to use it.")
     print("For scripting, use subcommands instead, e.g. 'nyora-cli sources'.")
 
 
