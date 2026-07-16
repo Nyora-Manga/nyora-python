@@ -253,6 +253,47 @@ class NyoraSync:
             out.append(view)
         return out
 
+    # -- full sync (web pushAll/pullAll/syncNow parity) ------------------------
+
+    def push_snapshot(
+        self, favourites: list[dict[str, Any]], history: list[dict[str, Any]]
+    ) -> None:
+        """Bulk-push a device's local library (favourites + history) to the cloud.
+
+        Mirrors nyora-web's ``pushAll``: one upsert per table, with a deduped
+        ``nyora_manga`` row for each referenced title so joins resolve on pull.
+        """
+        manga: dict[str, dict[str, Any]] = {}
+        fav_rows: list[dict[str, Any]] = []
+        hist_rows: list[dict[str, Any]] = []
+        for v in favourites:
+            mid = str(v.get("manga_id") or v.get("url") or "")
+            if not mid:
+                continue
+            manga[mid] = schema.manga_row_from_view(v)
+            added = str(v.get("added_at") or schema.now_iso())
+            fav_rows.append(schema.favourite_row(mid, now=added))
+        for v in history:
+            mid = str(v.get("manga_id") or v.get("url") or "")
+            if not mid:
+                continue
+            manga.setdefault(mid, schema.manga_row_from_view(v))
+            hist_rows.append(schema.history_row_from_view(v))
+        self.upsert(schema.TABLE_MANGA, list(manga.values()))
+        self.upsert(schema.TABLE_FAVOURITE, fav_rows)
+        self.upsert(schema.TABLE_HISTORY, hist_rows)
+
+    def sync_now(
+        self, favourites: list[dict[str, Any]], history: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Push the local library up, then pull the merged cloud state back down.
+
+        The web-parity primitive: ``pushAll`` then ``pullAll``. Returns the cloud
+        ``(favourites, history)`` for the caller to merge into its local store.
+        """
+        self.push_snapshot(favourites, history)
+        return self.favourites(), self.history()
+
     # -- lifecycle -------------------------------------------------------------
 
     def close(self) -> None:

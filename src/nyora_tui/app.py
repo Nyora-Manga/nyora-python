@@ -800,6 +800,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             try:
                 self._sync.sign_in(email, pw)
                 self._msg(f"[success]{_esc(t('welcome.welcome_back'))}[/]")
+                app: Any = self.app
+                app._full_sync()   # push local up + pull account down (web parity)
                 self._finish()
             except Exception as exc:  # noqa: BLE001
                 self._msg(f"[error]{_esc(t('welcome.signin_failed', error=str(exc)))}[/]")
@@ -815,6 +817,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 if not self._sync.is_signed_in:
                     self._sync.sign_in(email, pw)
                 self._msg(f"[success]{_esc(t('welcome.account_ready'))}[/]")
+                app: Any = self.app
+                app._full_sync()   # migrate local (guest) data up to the new account
                 self._finish()
             except Exception as exc:  # noqa: BLE001
                 self._msg(f"[error]{_esc(t('welcome.signup_failed', error=str(exc)))}[/]")
@@ -1609,6 +1613,23 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._render_sources(self.query_one("#src_filter", Input).value)
             self._render_modebar()
 
+        # -- cloud sync (full push+pull on sign-in, like nyora-web) ------------
+        @work(exclusive=True, thread=True, group="fullsync")
+        def _full_sync(self) -> None:
+            """web parity: on sign-in, push the local (guest) library up and pull
+            the account's favourites + history down, then merge — one round trip."""
+            if not self._sync.is_signed_in:
+                return
+            res, _err = _safe(self._sync.sync_now, self._lib.favourites(), self._lib.history())
+            if res is not None:
+                cloud_favs, cloud_hist = res
+                self.call_from_thread(self._apply_full_sync, cloud_favs, cloud_hist)
+
+        def _apply_full_sync(self, favs: list, hist: list) -> None:
+            self._lib.merge_cloud_favourites(favs)
+            self._lib.merge_cloud_history(hist)
+            self.notify(t("account.synced"), severity="information")
+
         def _render_sources(self, query: str = "") -> None:
             from collections import Counter
 
@@ -1952,7 +1973,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 return
             try:
                 self._sync.sign_in(email, pw)
-                self.app.pop_screen()
+                app: Any = self.app
+                app._full_sync()   # push local up + pull account down (web parity)
+                app.pop_screen()
             except Exception as exc:  # noqa: BLE001 - surface auth failure inline
                 self.query_one("#acct_msg", Static).update(f"[error]{_esc(str(exc))}[/]")
 

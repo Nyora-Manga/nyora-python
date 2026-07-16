@@ -69,3 +69,9 @@ class TuiSync:
 
     def history(self) -> list[dict[str, Any]]:
         return self._sync.history()
+
+    def sync_now(
+        self, favourites: list[dict[str, Any]], history: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Full bidirectional sync: push the local library up, pull the cloud down."""
+        return self._sync.sync_now(favourites, history)

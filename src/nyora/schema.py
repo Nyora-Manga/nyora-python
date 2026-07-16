@@ -123,6 +123,52 @@ def history_row(
     }
 
 
+def manga_row_from_view(view: dict[str, Any], *, now: str | None = None) -> dict[str, Any]:
+    """Build a ``nyora_manga`` row from a local library view dict (minimal fields).
+
+    Used to bulk-push a device's local library to the cloud (web ``pushAll``
+    parity). The local store only keeps title/url/cover/source, so other fields
+    default; the row still lets favourite/history joins resolve a title + cover.
+    """
+    now = now or now_iso()
+    mid = str(view.get("manga_id") or view.get("url") or "")
+    return {
+        "id": mid,
+        "title": str(view.get("title") or mid),
+        "alt_titles": json.dumps([]),
+        "url": mid,
+        "public_url": str(view.get("url") or ""),
+        "rating": -1.0,
+        "is_nsfw": False,
+        "content_rating": None,
+        "cover_url": str(view.get("cover") or ""),
+        "large_cover_url": "",
+        "state": None,
+        "authors": json.dumps([]),
+        "source_ref": json.dumps({"name": str(view.get("source") or "")}),
+        "description": "",
+        "tags": json.dumps([]),
+        "updated_at": str(view.get("added_at") or view.get("updated_at") or now),
+    }
+
+
+def history_row_from_view(view: dict[str, Any], *, now: str | None = None) -> dict[str, Any]:
+    """Build a ``nyora_history`` row from a local history view dict."""
+    now = now or now_iso()
+    return {
+        "manga_id": str(view.get("manga_id") or view.get("url") or ""),
+        "source_id": str(view.get("source") or ""),
+        "chapter_id": str(view.get("chapter_id") or ""),
+        "chapter_title": str(view.get("chapter_title") or ""),
+        "page": int(view.get("page", 0) or 0),
+        "scroll": 0,
+        "percent": float(view.get("percent", 0.0) or 0.0),
+        "chapters_count": int(view.get("total", 0) or 0),
+        "updated_at": str(view.get("updated_at") or now),
+        "deleted_at": None,
+    }
+
+
 def manga_view(manga_id: str, meta: dict[str, Any]) -> dict[str, Any]:
     """A friendly read-shape for a synced manga (joins a metadata row).
 

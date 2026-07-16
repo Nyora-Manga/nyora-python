@@ -128,3 +128,32 @@ def test_tuisync_exposes_history_pull() -> None:
     tui = TuiSync()
     tui._sync = _FakeSDK()  # type: ignore[assignment]
     assert tui.history()[0]["manga_id"] == "/m/1"
+
+
+def test_sync_now_pushes_local_then_pulls_cloud() -> None:
+    """web parity: sync_now upserts local favourites+history, then selects them back."""
+    from nyora.sync import NyoraSync
+
+    s = NyoraSync(token_path="")
+    upserts: list[tuple[str, int]] = []
+    s.upsert = lambda table, rows: (upserts.append((table, len(rows))), len(rows))[1]  # type: ignore[method-assign]
+    s.select = lambda table, since=None: []  # type: ignore[method-assign]
+
+    favs = [{"manga_id": "/m/1", "title": "A", "url": "/m/1", "source": "parser:MDX",
+             "cover": "c", "added_at": "2026-01-01"}]
+    hist = [{"manga_id": "/m/2", "title": "B", "url": "/m/2", "source": "parser:WC",
+             "chapter_title": "Ch 3", "percent": 0.4, "updated_at": "2026-02-01"}]
+    cloud_favs, cloud_hist = s.sync_now(favs, hist)
+
+    tables = [t for t, _ in upserts]
+    assert tables == [schema.TABLE_MANGA, schema.TABLE_FAVOURITE, schema.TABLE_HISTORY]
+    assert dict(upserts)[schema.TABLE_MANGA] == 2       # one manga row per referenced title
+    assert cloud_favs == [] and cloud_hist == []         # pull ran (empty cloud)
+
+
+def test_manga_row_from_view_matches_web_fields() -> None:
+    row = schema.manga_row_from_view(
+        {"manga_id": "/m/1", "title": "A", "url": "/m/1", "source": "s", "cover": "c"}
+    )
+    assert set(row) == WEB_MANGA_FIELDS
+    assert json.loads(row["source_ref"]) == {"name": "s"}
