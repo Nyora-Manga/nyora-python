@@ -385,35 +385,35 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
     # comfortably under that so full-width pages never overflow it.
     _MAX_IMAGE_CELLS = 240
 
-    def _mount_image(container, img, cols: int) -> None:
-        """Mount ``img`` at native resolution: full content width, aspect-correct height.
+    def _mount_image(container, img, cols: int, *, fill_width: bool = True) -> None:
+        """Render ``img`` into ``container`` at ``cols`` cells wide.
 
-        On a graphics terminal the full-resolution source is scaled to the
-        content's pixel box (``cols`` × cell width) with the aspect ratio kept,
-        so no detail is thrown away by pre-resizing. Very tall pages are sliced
-        into full-width bands to stay under the Kitty placeholder height limit.
-        Without a graphics protocol we degrade to half-cell pixels.
+        ``fill_width=True`` (webtoon) stretches to the full content width and
+        slices very tall pages into bands to stay under the Kitty placeholder
+        limit. ``fill_width=False`` (paged) sizes the widget to an explicit
+        ``cols`` × aspect-correct height so a *whole page* fits the viewport and
+        is centred by the container. Without a graphics protocol we degrade to
+        half-cell pixels. Explicit cell sizing renders far more reliably than
+        ``auto`` for graphics widgets mounted dynamically (auto can collapse to 0).
         """
         from PIL import Image as PILImage
 
         w, h = img.size
         if w <= 0 or h <= 0:
             return
+        cols = max(8, int(cols))
         if _IMAGE_CLS is not None:
             scale = max(1, cols * _CELL_W) / w
-            if (h * scale) / _CELL_H <= _MAX_IMAGE_CELLS:
-                bands = [img]
-            else:
+            if fill_width and (h * scale) / _CELL_H > _MAX_IMAGE_CELLS:
                 band_px = max(1, int(_MAX_IMAGE_CELLS * _CELL_H / scale))
                 bands = [img.crop((0, y, w, min(y + band_px, h))) for y in range(0, h, band_px)]
+            else:
+                bands = [img]
             for band in bands:
                 bw, bh = band.size
-                # Explicit full-width, aspect-preserving cell height. Explicit
-                # sizing renders far more reliably than "auto" for graphics
-                # widgets mounted dynamically (auto can collapse to 0 rows).
                 cells_h = max(1, round((cols * _CELL_W) * (bh / bw) / _CELL_H))
                 widget = _IMAGE_CLS(band)
-                widget.styles.width = "100%"  # fill width → maximum pixel resolution
+                widget.styles.width = "100%" if fill_width else cols
                 widget.styles.height = cells_h
                 container.mount(widget)
             return
@@ -2211,6 +2211,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         #pages_container { background: $background; align-horizontal: center; }
         #reader_status { padding: 2 3; }
         .pageslot { height: auto; width: 100%; }
+        /* Paged view: one page centred in the viewport (whole page visible). */
+        .paged_page {
+            width: 100%; height: 1fr; align: center middle; content-align: center middle;
+        }
         #reader_foot {
             dock: bottom; height: 1; padding: 0 2; background: $surface;
             color: $text-muted; border-top: solid $panel;
@@ -2231,7 +2235,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             mode = prefs.get("mode")
             fit = prefs.get("fit")
             self._mode: str = mode if mode in ("WEBTOON", "PAGED", "PAGED_RTL") else "WEBTOON"
-            self._fit: str = fit if fit in ("WIDTH", "HEIGHT") else "WIDTH"
+            # Paged modes default to HEIGHT (contain) so a whole page fits on screen.
+            self._fit: str = fit if fit in ("WIDTH", "HEIGHT") else "HEIGHT"
+            self._gen = 0                    # view generation (avoids id collisions on rebuild)
             self._pages: list = []
             self._images: list = []          # decoded PIL images (None until fetched/failed)
             self._errors: list = []          # per-page error string or None
@@ -2361,22 +2367,28 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._download_images()
 
         def _build_view(self) -> None:
-            """Lay out the container for the current mode (called on load / mode switch).
+            """Lay out the container for the current mode (on load / mode / fit switch).
 
-            The mount is deferred to after the pending ``remove_children`` is
-            processed, so a fixed-id child never collides with its predecessor.
+            Each rebuild bumps a generation counter and scopes child ids to it, so
+            new pages never collide with predecessors still being removed — this is
+            what makes the mode switcher reliably re-render (a stale ``children``
+            guard previously left the screen blank on switch).
             """
-            self.query_one("#pages_container", VerticalScroll).remove_children()
-            self.call_after_refresh(self._populate_view)
-
-        def _populate_view(self) -> None:
+            self._gen += 1
             container = self.query_one("#pages_container", VerticalScroll)
-            if container.children or not self._pages:
-                return
+            container.remove_children()
+            self.call_after_refresh(self._populate_view, self._gen)
+
+        def _populate_view(self, gen: int) -> None:
+            if gen != self._gen or not self._pages:
+                return  # superseded by a newer build, or nothing to show
+            container = self.query_one("#pages_container", VerticalScroll)
             if self._mode == "WEBTOON":
                 container.mount_all(
                     Vertical(
-                        Static(f"[dim]page {i + 1} · loading…[/]"), id=f"pg_{i}", classes="pageslot"
+                        Static(f"[dim]page {i + 1} · loading…[/]"),
+                        id=f"pg_{self._gen}_{i}",
+                        classes="pageslot",
                     )
                     for i in range(len(self._pages))
                 )
@@ -2388,7 +2400,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                             Static(f"[error]page {i + 1}: {_esc(str(self._errors[i]))}[/]")
                         )
             else:
-                container.mount(Vertical(id="page_now", classes="pageslot"))
+                container.mount(Vertical(id=f"page_now_{self._gen}", classes="pageslot paged_page"))
                 self._show_page()
 
         # -- concurrent download ------------------------------------------ #
@@ -2468,12 +2480,18 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         # -- rendering helpers -------------------------------------------- #
         def _slot(self, i: int) -> Vertical:
-            return self.query_one(f"#pg_{i}", Vertical)
+            return self.query_one(f"#pg_{self._gen}_{i}", Vertical)
 
         def _fit_cols(self, img) -> int:
-            """Content width (cells) for the current fit mode."""
+            """Width in cells that fits the whole page in the viewport (contain).
+
+            Returns the min of the width-fit and height-fit widths, so a portrait
+            page is limited by height (whole page visible) and a wide spread by
+            width. ``WIDTH`` fit skips the height limit (fill width, may scroll).
+            """
             cols = self.app.console.width
             if self._fit == "HEIGHT":
+                # Rows available for the page: minus header, footer and a margin.
                 rows = max(4, self.app.console.height - 4)
                 w, h = img.size
                 by_h = int(rows * (w / h) * (_CELL_H / _CELL_W))
@@ -2484,13 +2502,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             try:
                 slot = self._slot(index)
                 slot.remove_children()
-                _mount_image(slot, img, self._fit_cols(img))
+                # Webtoon always fills the width and scrolls vertically.
+                _mount_image(slot, img, self.app.console.width, fill_width=True)
             except Exception as exc:  # noqa: BLE001
                 self._errors[index] = str(exc)
 
         def _show_page(self) -> None:
             try:
-                view = self.query_one("#page_now", Vertical)
+                view = self.query_one(f"#page_now_{self._gen}", Vertical)
             except Exception:  # noqa: BLE001
                 return
             view.remove_children()
@@ -2498,7 +2517,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             img = self._images[i] if i < len(self._images) else None
             if img is not None:
                 try:
-                    _mount_image(view, img, self._fit_cols(img))
+                    # Paged: contain-fit (whole page) unless the user forces WIDTH.
+                    _mount_image(view, img, self._fit_cols(img), fill_width=self._fit == "WIDTH")
                 except Exception as exc:  # noqa: BLE001
                     view.mount(Static(f"[error]page {i + 1}: render: {_esc(str(exc))}[/]"))
             elif self._errors[i]:
@@ -2510,6 +2530,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         # -- history ------------------------------------------------------- #
         @work(exclusive=True, thread=True, group="history")
         def _record_history(self) -> None:
+            # The offline reader (opened from a local .cbz) has no source/details
+            # to attribute history to — skip rather than crash on self._source.id.
+            if self._source is None:
+                return
             manga = self._details.manga if self._details else self.chapter
             total = len(self._details.chapters) if self._details else 0
             pct = (self._page_idx + 1) / len(self._pages) if self._pages else 0.0
