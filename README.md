@@ -29,8 +29,46 @@ to maintain. You're reading in 60 seconds.
 
 ---
 
+## The terminal reader
+
+A dense, keyboard-driven manga reader in your terminal — a redesigned first-run
+setup, live theming, and an interface available in **~40 languages**. Launch it
+with a bare `nyora`.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-browse.png" width="90%" alt="Nyora TUI — sources grouped by language, keyboard-driven" />
+</p>
+
+<table>
+<tr>
+<td width="50%"><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-welcome.png" alt="Branded welcome / sign-in or continue as guest" /></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-onboarding.png" alt="First-run setup: app language, colour theme, source languages" /></td>
+</tr>
+<tr>
+<td><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-language-navigator.png" alt="Language navigator — jump to any source language" /></td>
+<td><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-themes.png" alt="Colour-theme picker — 10 schemes, light and dark" /></td>
+</tr>
+</table>
+
+### Available in ~40 languages
+
+The whole interface — onboarding, navigation and the reader — localises into
+**~40 languages** (English fallback for anything untranslated), including
+right-to-left scripts. Change it anytime from **Settings** (`,`).
+
+<table>
+<tr>
+<td width="33%"><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-onboarding-ja.png" alt="Onboarding in Japanese" /><br/><sub>日本語 — onboarding</sub></td>
+<td width="33%"><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-settings-ru.png" alt="Settings in Russian, Totoro theme" /><br/><sub>Русский — settings (Totoro theme)</sub></td>
+<td width="33%"><img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-help-ar.png" alt="Keyboard help in Arabic, right-to-left" /><br/><sub>العربية — help (RTL)</sub></td>
+</tr>
+</table>
+
+---
+
 ## Table of contents
 
+- [The terminal reader](#the-terminal-reader)
 - [Why Nyora](#why-nyora)
 - [Install](#install)
 - [Quickstart — a working reader in 10 lines](#quickstart)

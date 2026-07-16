@@ -1390,6 +1390,11 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def __init__(self) -> None:
             super().__init__()
+            # Load the UI language before anything composes, so the first render
+            # (source filter / search placeholders included) is already localised.
+            from nyora_tui.i18n import init_from_config
+
+            init_from_config()
             self._client = Nyora()
             self._sync = TuiSync()
             self._lib = LocalLibrary()
