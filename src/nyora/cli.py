@@ -634,8 +634,8 @@ def _cmd_config(args: argparse.Namespace) -> int:
     console.print(f"[nyora.muted]effective URL[/] {effective}")
     console.print("\n[nyora.muted]Set your own server:[/]  nyora config set-url http://127.0.0.1:8788")
     console.print(
-        "[nyora.muted]Standalone server:  [/]  "
-        "pipx install nyora-extension-server && nyora-extension-server"
+        "[nyora.muted]Bundled engine:     [/]  "
+        "runs automatically — no setup (a JRE is fetched on first use if needed)"
     )
     return 0
 
