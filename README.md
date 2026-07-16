@@ -36,6 +36,14 @@ setup, live theming, and an interface available in **~40 languages**. Launch it
 with a bare `nyora`.
 
 <p align="center">
+  <video src="https://github.com/Nyora-Manga/nyora-python/raw/main/docs/screenshots/nyora-demo.mp4" controls muted width="90%"></video>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Nyora-Manga/nyora-python/raw/main/docs/screenshots/nyora-demo.mp4"><sub>▶ Watch the demo</sub></a>
+</p>
+
+<p align="center">
   <img src="https://raw.githubusercontent.com/Nyora-Manga/nyora-python/main/docs/screenshots/tui-browse.png" width="90%" alt="Nyora TUI — sources grouped by language, keyboard-driven" />
 </p>
 

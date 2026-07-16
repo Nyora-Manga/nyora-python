@@ -84,6 +84,10 @@ build-backend = "hatchling.build"
 [tool.uv]
 package = true
 
+# The README references the demo video by GitHub URL, so it needn't bloat the sdist.
+[tool.hatch.build.targets.sdist]
+exclude = ["docs/screenshots/*.mp4"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/nyora", "src/nyora_tui", "src/nyora_extension_server"]
 # The vendored engine's JVM helper jar (a binary artifact) must be shipped.
