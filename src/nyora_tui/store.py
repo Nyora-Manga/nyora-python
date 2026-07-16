@@ -154,6 +154,37 @@ class LocalLibrary:
         self._data["history"][mid] = entry
         self._save()
 
+    def merge_cloud_history(self, rows: list[dict[str, Any]]) -> None:
+        """Merge cloud history rows (from TuiSync.history) — last-write-wins by ``updated_at``.
+
+        Mirrors :meth:`merge_cloud_favourites` but resolves conflicts on recency
+        (progress advances), so history read on another device shows up here too.
+        """
+        changed = False
+        for row in rows:
+            mid = row.get("manga_id") or row.get("url")
+            if not mid:
+                continue
+            existing = self._data["history"].get(mid)
+            if existing and str(existing.get("updated_at", "")) >= str(row.get("updated_at", "")):
+                continue  # local entry is at least as recent — keep it
+            self._data["history"][mid] = {
+                "manga_id": mid,
+                "title": row.get("title") or mid,
+                "url": row.get("url") or mid,
+                "source": row.get("source", ""),
+                "cover": row.get("cover", ""),
+                "chapter_id": row.get("chapter_id", ""),
+                "chapter_title": row.get("chapter_title", ""),
+                "page": int(row.get("page", 0) or 0),
+                "total": int(row.get("total", 0) or 0),
+                "percent": float(row.get("percent", 0.0) or 0.0),
+                "updated_at": row.get("updated_at", ""),
+            }
+            changed = True
+        if changed:
+            self._save()
+
     def history(self) -> list[dict[str, Any]]:
         items = list(self._data["history"].values())
         items.sort(key=lambda e: str(e.get("updated_at", "")), reverse=True)

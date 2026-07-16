@@ -1272,6 +1272,24 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self.action_reload()
 
         def action_reload(self) -> None:
+            # Pull cloud history first when signed in (bidirectional, like the
+            # library and nyora-web), then render — else render the local store.
+            if self._sync.is_signed_in:
+                self.query_one("#hist_msg", Static).update(f"[dim]{_esc(t('toast.syncing'))}[/]")
+                self._sync_cloud()
+            else:
+                self._build()
+
+        @work(exclusive=True, thread=True, group="histsync")
+        def _sync_cloud(self) -> None:
+            rows, _err = _safe(self._sync.history)
+            self.app.call_from_thread(self._merged, rows or [])
+
+        def _merged(self, rows) -> None:
+            self._lib.merge_cloud_history(rows)
+            self._build()
+
+        def _build(self) -> None:
             msg = self.query_one("#hist_msg", Static)
             table = self.query_one("#hist_table", DataTable)
             table.clear()

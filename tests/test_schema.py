@@ -92,3 +92,39 @@ def test_tuisync_delegates_to_sdk() -> None:
     tui._sync = _FakeSDK()  # type: ignore[assignment]
     tui.favourite("parser:MDX", _manga())
     assert seen and seen[0][0] == "parser:MDX"
+
+
+def test_history_syncs_bidirectionally_like_favourites(tmp_path: Any) -> None:
+    """History pulls + merges cloud rows (last-write-wins), matching nyora-web."""
+    from nyora_tui.store import LocalLibrary
+
+    lib = LocalLibrary(path=tmp_path / "library.json")
+    lib._data["history"]["/m/1"] = {
+        "manga_id": "/m/1", "title": "A", "updated_at": "2026-01-01T00:00:00", "percent": 0.1,
+    }
+    lib.merge_cloud_history([
+        {"manga_id": "/m/1", "title": "A", "updated_at": "2026-02-01T00:00:00", "percent": 0.8},
+        {"manga_id": "/m/2", "title": "B", "updated_at": "2026-01-15T00:00:00", "percent": 0.5},
+    ])
+    by_id = {e["manga_id"]: e for e in lib.history()}
+    assert by_id["/m/1"]["percent"] == 0.8   # newer cloud wins
+    assert "/m/2" in by_id                    # new cloud manga pulled in
+    # an older cloud row must NOT clobber the newer local entry
+    lib.merge_cloud_history([{"manga_id": "/m/1", "updated_at": "2025-01-01", "percent": 0.01}])
+    assert {e["manga_id"]: e for e in lib.history()}["/m/1"]["percent"] == 0.8
+
+
+def test_tuisync_exposes_history_pull() -> None:
+    """TuiSync forwards a cloud-history pull (the History screen calls this)."""
+    from nyora_tui.sync import TuiSync
+
+    class _FakeSDK:
+        def favourites(self):  # noqa: D401
+            return []
+
+        def history(self):
+            return [{"manga_id": "/m/1", "title": "A", "updated_at": "2026", "percent": 0.5}]
+
+    tui = TuiSync()
+    tui._sync = _FakeSDK()  # type: ignore[assignment]
+    assert tui.history()[0]["manga_id"] == "/m/1"
