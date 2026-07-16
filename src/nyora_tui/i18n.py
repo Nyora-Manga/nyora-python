@@ -62,6 +62,7 @@ EN: dict[str, str] = {
     "prefs.source_langs": "Source languages",
     "prefs.source_langs_hint": "space to toggle · none = all languages",
     "prefs.start_reading": "Start reading",
+    "prefs.save": "Save",
     # -- navigation / global chrome -----------------------------------------
     "nav.sources": "Sources",
     "nav.popular": "Popular",
@@ -79,6 +80,16 @@ EN: dict[str, str] = {
     "nav.home": "Home",
     "nav.open": "Open",
     "nav.settings": "Settings",
+    "nav.filter": "Filter sources",
+    # -- status bar ----------------------------------------------------------
+    "status.loading_sources": "loading sources",
+    "status.sources_ready": "{count} sources ready",
+    "status.sources_failed": "sources failed: {error}",
+    "status.select_source_first": "select a source first",
+    "status.results": "{count} results",
+    "status.guest": "guest",
+    "sources.none_selected": "no source",
+    "sources.nsfw_hidden": "18+ hidden",
     # -- toasts / status -----------------------------------------------------
     "toast.not_installed": "That source isn’t installed here.",
     "toast.added": "Added to library.",
@@ -110,6 +121,15 @@ EN: dict[str, str] = {
     "reader.already_downloaded": "This chapter is already downloaded.",
     "reader.nothing_to_download": "Nothing to download yet.",
     "reader.no_offline_pages": "No downloaded pages found on disk.",
+    "reader.foot_hint": "m mode · f fit · n/p chapter · d save",
+    "reader.pos_webtoon": "{loaded}/{total} loaded · scroll {pct}%",
+    "reader.pos_paged": "page {n}/{total}",
+    "reader.failed_count": "{count} failed",
+    "reader.mode_webtoon": "webtoon",
+    "reader.mode_paged": "paged",
+    "reader.mode_paged_rtl": "paged-rtl",
+    "reader.no_graphics": "no graphics",
+    "reader.resolve_failed": "Failed to resolve pages:",
     "details.loading": "loading…",
     "details.chapters": "chapters",
     # -- library / history / downloads --------------------------------------
@@ -126,10 +146,11 @@ EN: dict[str, str] = {
     "sources.filter": "type to filter sources…",
     "langnav.title": "Jump to language",
     "langnav.hint": "type to filter · enter to jump",
+    "langnav.filter": "type to filter languages…",
     "langnav.count": "{count} sources",
     # -- theme picker --------------------------------------------------------
     "theme.title": "Colour scheme",
-    "theme.hint": "↑↓ preview · enter apply · esc cancel",
+    "theme.hint": "↑↓ preview · space light/dark · enter apply · esc cancel",
     "theme.light": "Light",
     "theme.dark": "Dark",
     # -- account -------------------------------------------------------------

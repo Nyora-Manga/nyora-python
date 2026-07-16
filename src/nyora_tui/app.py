@@ -450,7 +450,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 ("Next page", app.action_next_page, "Go to the next page"),
                 ("Previous page", app.action_prev_page, "Go to the previous page"),
                 ("Toggle NSFW", app.action_toggle_nsfw, "Show or hide adult sources/results"),
-                (t("sources.filter"), app.action_focus_filter, "Jump to the source filter"),
+                (t("nav.filter"), app.action_focus_filter, "Jump to the source filter"),
                 (t("nav.library"), app.action_library, "Your synced favourites"),
                 (t("nav.history"), app.action_history, "Recent reading history"),
                 (t("nav.account"), app.action_account, "Sign in or out of Nyora sync"),
@@ -602,10 +602,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._render_head()
 
         def _render_head(self) -> None:
-            appear = "Light ☀" if self._light else "Dark ☾"
+            appear = f"{t('theme.light')} ☀" if self._light else f"{t('theme.dark')} ☾"
             self.query_one("#theme_head", Static).update(
-                f"[b $accent]❀ Colour scheme[/]   [dim]·[/]  [b]{appear}[/]\n"
-                "[dim]↑↓ preview · space light/dark · enter apply · esc cancel[/]"
+                f"[b $accent]❀ {_esc(t('theme.title'))}[/]   [dim]·[/]  [b]{appear}[/]\n"
+                f"[dim]{_esc(t('theme.hint'))}[/]"
             )
 
         def action_cursor_down(self) -> None:
@@ -682,7 +682,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                     f"[dim]{_esc(t('langnav.hint'))}[/]",
                     id="lang_head",
                 )
-                yield Input(placeholder=t("sources.filter"), id="lang_filter")
+                yield Input(placeholder=t("langnav.filter"), id="lang_filter")
                 yield OptionList(id="lang_list")
 
         def on_mount(self) -> None:
@@ -740,7 +740,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._sync = sync
 
         def compose(self) -> ComposeResult:
-            with Vertical(id="w_box"):
+            with VerticalScroll(id="w_box"):
                 yield Static("[b $accent]NYORA[/]   [dim]破壊[/]")
                 yield Static(f"[$secondary]{_esc(t('app.tagline'))}[/]")
                 yield Static("")
@@ -830,8 +830,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         """
 
         BINDINGS = [
-            Binding("ctrl+s", "start", "Start reading"),
-            Binding("enter", "start", "Start reading", show=False),
+            Binding("ctrl+s", "start", "Save"),
+            Binding("enter", "start", "Save", show=False),
+            Binding("escape", "cancel", "Cancel"),
         ]
         CSS = """
         PreferencesScreen { align: center middle; background: $background; }
@@ -847,10 +848,23 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         .p_head { margin-top: 1; }
         """
 
-        def __init__(self, sync) -> None:
+        def __init__(self, sync, *, settings: bool = False) -> None:
             super().__init__()
             self._sync = sync
+            self._settings = settings  # True when re-opened as Settings (not first-run)
             self._populated = False
+            self._tries = 0
+            self._orig_theme: str | None = None
+            self._orig_lang: str | None = None
+
+        def _kicker(self) -> str:
+            return "" if self._settings else t("prefs.youre_in")
+
+        def _title(self) -> str:
+            return t("nav.settings") if self._settings else t("prefs.title")
+
+        def _start_label(self) -> str:
+            return t("prefs.save") if self._settings else t("prefs.start_reading")
 
         def compose(self) -> ComposeResult:
             from textual.widgets import Select, SelectionList, Switch
@@ -862,9 +876,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             lang_opts = [(name, code) for code, name in available_languages()]
             theme_opts = [(name, sid) for sid, name, _l, _d in _SCHEMES]
 
-            with Vertical(id="p_box"):
-                yield Static(f"[$secondary]{_esc(t('prefs.youre_in'))}[/]", id="p_kicker")
-                yield Static(f"[b]{_esc(t('prefs.title'))}[/]", id="p_title")
+            with VerticalScroll(id="p_box"):
+                yield Static(f"[$secondary]{_esc(self._kicker())}[/]", id="p_kicker")
+                yield Static(f"[b]{_esc(self._title())}[/]", id="p_title")
                 yield Static(f"[dim]{_esc(t('prefs.blurb'))}[/]", id="p_blurb")
 
                 yield Static(f"[$secondary]{_esc(t('prefs.app_language'))}[/]", classes="p_head",
@@ -889,9 +903,14 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 )
                 yield SelectionList(id="p_langs")
                 with Horizontal(id="p_actions"):
-                    yield Button(t("prefs.start_reading"), id="p_start", variant="primary")
+                    yield Button(self._start_label(), id="p_start", variant="primary")
 
         def on_mount(self) -> None:
+            from nyora_tui.i18n import current_language
+
+            # Snapshot the live-previewed state so Cancel can revert it.
+            self._orig_theme = self.app.theme
+            self._orig_lang = current_language()
             self._timer = self.set_interval(0.3, self._populate)
             self._populate()
 
@@ -904,7 +923,10 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             if self._populated:
                 return
             srcs = getattr(self.app, "_sources", [])
+            self._tries += 1
             if not srcs:
+                if self._tries >= 34:  # ~10s: sources never arrived; stop retrying
+                    self._timer.stop()  # leave _populated False so Save won't wipe langs
                 return
             sl = self.query_one("#p_langs", SelectionList)
             preselect = set(getattr(self.app, "_languages", set()) or set())
@@ -946,8 +968,8 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def _relabel(self) -> None:
             """Re-render the screen's own labels after an app-language change."""
             pairs = {
-                "p_kicker": f"[$secondary]{_esc(t('prefs.youre_in'))}[/]",
-                "p_title": f"[b]{_esc(t('prefs.title'))}[/]",
+                "p_kicker": f"[$secondary]{_esc(self._kicker())}[/]",
+                "p_title": f"[b]{_esc(self._title())}[/]",
                 "p_blurb": f"[dim]{_esc(t('prefs.blurb'))}[/]",
                 "p_lang_head": f"[$secondary]{_esc(t('prefs.app_language'))}[/]",
                 "p_theme_head": f"[$secondary]{_esc(t('prefs.theme'))}[/]",
@@ -964,12 +986,22 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 except Exception:  # noqa: BLE001 - a missing label must never crash
                     pass
             try:
-                self.query_one("#p_start", Button).label = t("prefs.start_reading")
+                self.query_one("#p_start", Button).label = self._start_label()
             except Exception:  # noqa: BLE001
                 pass
 
         def on_button_pressed(self, event: Button.Pressed) -> None:
             self.action_start()
+
+        def action_cancel(self) -> None:
+            """Close without saving, reverting the live theme + UI-language preview."""
+            from nyora_tui.i18n import set_language
+
+            if self._orig_theme is not None:
+                self.app.theme = self._orig_theme
+            if self._orig_lang is not None:
+                set_language(self._orig_lang)
+            self.app.pop_screen()
 
         def action_start(self) -> None:
             from textual.widgets import Select, SelectionList, Switch
@@ -991,12 +1023,18 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             set_config_theme(self.app.theme)
 
             show = self.query_one("#p_nsfw_sw", Switch).value
-            langs = [str(v) for v in self.query_one("#p_langs", SelectionList).selected]
             set_show_nsfw(show)
-            set_languages(langs)
+            # Only persist source-languages once the picker actually populated —
+            # a Save before sources load would otherwise wipe the saved filter.
+            if self._populated:
+                langs = [str(v) for v in self.query_one("#p_langs", SelectionList).selected]
+                set_languages(langs)
+                lang_set = set(langs)
+            else:
+                lang_set = set(getattr(self.app, "_languages", set()) or set())
             set_onboarded(True)
             app: Any = self.app
-            app._apply_content_prefs(show, set(langs))
+            app._apply_content_prefs(show, lang_set)
             self.app.pop_screen()
 
     # ----------------------------------------------------------------------- #
@@ -1247,7 +1285,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                     _esc(_hist_when(it.get("updated_at", ""))),
                     key=str(i),
                 )
-            self.query_one("#hist_head", Static).update(f"History · {len(self._items)}")
+            self.query_one("#hist_head", Static).update(
+                f"{t('history.title')} · {len(self._items)}"
+            )
             table.focus()
 
         def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
@@ -1465,13 +1505,16 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 # @click makes the pill a mouse target that fires the app action.
                 return f"[@click=app.{action}][{style}] {label} [/][/]"
 
-            src = _esc(self._current_source.name) if self._current_source else "no source"
-            nsfw = "  [warning]· 18+ hidden[/]" if self._hide_nsfw else ""
+            src = (
+                _esc(self._current_source.name)
+                if self._current_source else t("sources.none_selected")
+            )
+            nsfw = f"  [warning]· {_esc(t('sources.nsfw_hidden'))}[/]" if self._hide_nsfw else ""
             pills = "  ".join(
                 (
-                    pill("popular", "POPULAR", "popular"),
-                    pill("latest", "LATEST", "latest"),
-                    pill("search", "SEARCH", "focus_search"),
+                    pill("popular", t("nav.popular"), "popular"),
+                    pill("latest", t("nav.latest"), "latest"),
+                    pill("search", t("nav.search"), "focus_search"),
                 )
             )
             try:
@@ -1490,7 +1533,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             parts.append(f"pg {self._page}")
             if self._last_ms:
                 parts.append(f"[$success]{self._last_ms:.0f}ms[/]")
-            who = self._sync.email if self._sync.is_signed_in else "guest"
+            who = self._sync.email if self._sync.is_signed_in else t("status.guest")
             parts.append(f"[$primary]{_esc(who or 'guest')}[/]")
             try:
                 self.query_one("#statusbar", Static).update("  [dim]·[/]  ".join(parts))
@@ -1504,7 +1547,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         # -- sources ------------------------------------------------------- #
         def _load_sources(self) -> None:
-            self._set_status("loading sources", loading=True)
+            self._set_status(t("status.loading_sources"), loading=True)
             self._load_sources_worker()
 
         @work(exclusive=True, thread=True, group="sources")
@@ -1515,12 +1558,12 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         def _on_sources(self, sources, err, ms: float) -> None:
             self._last_ms = ms
             if err:
-                self._set_status(f"[error]sources failed: {_esc(str(err))}[/]")
+                self._set_status(f"[error]{_esc(t('status.sources_failed', error=str(err)))}[/]")
                 return
             self._sources = sources or []
             base = getattr(self._client, "base_url", "")
             self.sub_title = f"{len(self._sources)} sources · bundled engine · {base}"
-            self._set_status(f"{len(self._sources)} sources ready")
+            self._set_status(t("status.sources_ready", count=len(self._sources)))
             self._render_sources()
 
         def _visible_sources(self) -> list:
@@ -1577,7 +1620,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
         # -- results ------------------------------------------------------- #
         def _fetch(self) -> None:
             if self._current_source is None:
-                self._set_status("[warning]select a source first[/]")
+                self._set_status(f"[warning]{_esc(t('status.select_source_first'))}[/]")
                 return
             self._reveal_results()
             self._render_modebar()
@@ -1603,7 +1646,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             self._results = rows
             self._fill_results_table()
             more = " · [dim]n→more[/]" if page_obj and page_obj.has_next_page else ""
-            self._set_status(f"{len(rows)} results{more}")
+            self._set_status(f"{t('status.results', count=len(rows))}{more}")
             if rows:
                 self.query_one("#results", DataTable).focus()
 
@@ -1681,12 +1724,21 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             """When landing on a language-header row in the source list, step past it."""
             if table.id != "src_table":
                 return
-            for _ in range(4):
+
+            def on_hdr() -> bool:
                 pos = table.cursor_row
-                if 0 <= pos < len(self._src_rows) and self._src_rows[pos][0] == "hdr":
-                    table.action_cursor_down() if direction >= 0 else table.action_cursor_up()
-                else:
+                return 0 <= pos < len(self._src_rows) and self._src_rows[pos][0] == "hdr"
+
+            for _ in range(4):
+                if not on_hdr():
                     break
+                table.action_cursor_down() if direction >= 0 else table.action_cursor_up()
+            # The first visual row is always a header, so moving up can strand the
+            # cursor there — reverse downward onto the nearest real source row.
+            for _ in range(4):
+                if not on_hdr():
+                    break
+                table.action_cursor_down()
 
         def action_cursor_down(self) -> None:
             if t := self._focused_table():
@@ -1719,7 +1771,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         def action_settings(self) -> None:
             """Re-open onboarding preferences as a settings screen (change anytime)."""
-            self.push_screen(PreferencesScreen(self._sync))
+            self.push_screen(PreferencesScreen(self._sync, settings=True))
 
         def action_language_nav(self) -> None:
             """Open the language navigator and jump the source list to the choice."""
@@ -1867,7 +1919,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             pw = self.query_one("#acct_pw", Input).value.strip()
             if not email or not pw:
                 self.query_one("#acct_msg", Static).update(
-                    "[warning]email and password required[/]"
+                    f"[warning]{_esc(t('welcome.enter_creds'))}[/]"
                 )
                 return
             try:
@@ -1943,7 +1995,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
                 return
             self._details = details
             self._render_meta()
-            self.query_one("#d_head", Static).update(f"chapters · {len(details.chapters)}")
+            self.query_one("#d_head", Static).update(
+                f"{t('details.chapters')} · {len(details.chapters)}"
+            )
             self._render_chapters()
             self.query_one("#chapters", DataTable).focus()
             self._load_cover(details.manga)
@@ -2198,9 +2252,13 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
 
         # -- header / footer ---------------------------------------------- #
         def _render_head(self) -> None:
-            proto = _PROTOCOL if _PROTOCOL != "none" else "NO GRAPHICS"
+            proto = _PROTOCOL if _PROTOCOL != "none" else t("reader.no_graphics")
             title = _esc(self.chapter.title or self.chapter.id)
-            mode = {"WEBTOON": "webtoon", "PAGED": "paged", "PAGED_RTL": "paged-rtl"}[self._mode]
+            mode = {
+                "WEBTOON": t("reader.mode_webtoon"),
+                "PAGED": t("reader.mode_paged"),
+                "PAGED_RTL": t("reader.mode_paged_rtl"),
+            }[self._mode]
             offline = " [success]· offline[/]" if self._local_cbz else ""
             self.query_one("#reader_head", Static).update(
                 f"[b]{title}[/]   [dim]· {mode} · {self._fit.lower()} · img:[/] {proto}{offline}"
@@ -2243,17 +2301,22 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             except Exception:  # noqa: BLE001
                 return
             proto = (
-                f"[$secondary]{_PROTOCOL}[/]" if _PROTOCOL != "none" else "[error]no graphics[/]"
+                f"[$secondary]{_PROTOCOL}[/]"
+                if _PROTOCOL != "none"
+                else f"[error]{_esc(t('reader.no_graphics'))}[/]"
             )
-            fail = f"  ·  [warning]{self._failed} failed[/]" if self._failed else ""
+            fail = (
+                f"  ·  [warning]{_esc(t('reader.failed_count', count=self._failed))}[/]"
+                if self._failed else ""
+            )
             if self._mode == "WEBTOON":
                 c = self.query_one("#pages_container", VerticalScroll)
                 maxy = max(1, c.max_scroll_y)
                 pct = min(100, int(c.scroll_offset.y / maxy * 100)) if maxy else 100
-                pos = f"{self._loaded}/{len(self._pages)} loaded · scroll {pct}%"
+                pos = t("reader.pos_webtoon", loaded=self._loaded, total=len(self._pages), pct=pct)
             else:
-                pos = f"page {self._page_idx + 1}/{len(self._pages) or '?'}"
-            hint = "m mode · f fit · n/p chapter · d save"
+                pos = t("reader.pos_paged", n=self._page_idx + 1, total=len(self._pages) or "?")
+            hint = t("reader.foot_hint")
             foot.update(f"{pos}{fail}  ·  {proto}  ·  [dim]{hint}[/]")
 
         # -- page loading ------------------------------------------------- #
@@ -2268,7 +2331,7 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             container = self.query_one("#pages_container", VerticalScroll)
             container.remove_children()
             if err:
-                container.mount(Static(f"[error]Failed to resolve pages:[/]\n{_esc(str(err))}"))
+                container.mount(Static(f"[error]{_esc(t('reader.resolve_failed'))}[/]\n{_esc(str(err))}"))
                 self._done_flag = True
                 return
             self._pages = pages or []
