@@ -250,7 +250,9 @@ def _run_textual() -> bool:  # noqa: C901 - a rich single-file TUI; cohesion bea
             background=base["bg"],
             surface=base["surface"],
             panel=base["panel"],
-            success="#7FB88A" if is_dark else "#3B863F",
+            # 'success' follows the scheme accent (no fixed green that clashes with
+            # a pink/blue/teal theme). Warning/error stay semantic (amber/red).
+            success=accent,
             warning="#E0B354" if is_dark else "#9A6A00",
             error="#EB7D9B" if is_dark else "#B23A5B",
             dark=is_dark,

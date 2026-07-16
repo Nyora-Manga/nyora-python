@@ -61,7 +61,7 @@ def _build_theme() -> Theme:
             "nyora.lang": "#8fd6c0",        # teal language tags
             "nyora.nsfw": "bold #ff6b6b",   # 18+ badge
             "nyora.pin": "#f6c177",
-            "nyora.ok": "bold #a7e0a0",
+            "nyora.ok": f"bold {accent}",   # success follows the theme accent (no fixed green)
             "nyora.warn": "#f6c177",
             "nyora.err": "bold #ff6b6b",
             # Override Rich's defaults (table titles are italic by default) so our
