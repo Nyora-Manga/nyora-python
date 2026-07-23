@@ -21,11 +21,12 @@ to maintain. You're reading in 60 seconds.
 
 </div>
 
-> **In one line:** Nyora is the programmatic, cross-platform **Tachiyomi / Mihon /
-> Kotatsu alternative** — a manga API and reader SDK you can `import`. If you're
-> building a manga reader, a scanlation bot, a downloader, or a library manager in
-> Python, this is the fastest way to get **hundreds of working sources** without
-> writing or maintaining a single scraper.
+> **In one line:** Nyora gives any Python project **hundreds of working manga sources**
+> through one typed import — search, browse, read, download, and sync a library across
+> devices. If you're building a manga reader, a scanlation bot, a downloader, or a
+> library manager in Python, this is the fastest way to get working sources without
+> writing or maintaining a single scraper. Sources are powered by the
+> [`nyora-data-driven`](https://github.com/Nyora-Manga/nyora-data-driven) catalogue.
 
 ---
 
@@ -99,7 +100,7 @@ right-to-left scripts. Change it anytime from **Settings** (`,`).
 |---|---|
 | 📚 **390 working sources** | Every source is live health-checked; 570 dead or Cloudflare-walled ones are auto-hidden, so `list()`/`catalog()` return only sources that actually work — **390 across 40 languages** (289 all-ages, 101 mature). |
 | 🌐 **One typed API** | `Source`, `Manga`, `MangaChapter`, `MangaPage`, `MangaDetails` dataclasses. Full type hints, `py.typed`, mypy-clean. |
-| 📦 **Self-contained** | Bundles the [kotatsu-parsers](https://github.com/KotatsuApp/kotatsu-parsers) engine and runs it locally (auto-downloads a JRE if you have no Java). Parsed results, not scraping headaches — nothing to compile, no Node, no server. |
+| 📦 **Self-contained** | Bundles the [`nyora-shared`](https://github.com/Nyora-Manga/nyora-shared) engine and runs it locally (auto-downloads a JRE if you have no Java). Source definitions are delivered through the same [`nyora-data-driven`](https://github.com/Nyora-Manga/nyora-data-driven) catalogue used across all Nyora platforms — parsed results, not scraping headaches. Nothing to compile, no Node, no server. |
 | 🔀 **Correct chapter order** | Built-in `next_chapter()` / `previous_chapter()` work on both ascending (MangaDex `0→N`) and descending (scanlation `N→0`) sources — no off-by-one "next goes backwards" bug. |
 | 🧰 **Batteries included** | A CLI, an interactive terminal reader (TUI), a `.cbz` downloader, and cross-device cloud sync — all in one `pip install`. |
 | ⚡ **Sync & async** | Use `Nyora` or `AsyncNyora` with identical APIs. |
@@ -310,13 +311,15 @@ order-independent **next / previous chapter** navigation and inline downloads.
 <a name="how-it-works"></a>
 ## How it works
 
-`nyora` is **self-contained**. `pip install nyora` bundles the kotatsu-parsers JVM
-engine (and auto-downloads a JRE if you don't have Java); `Nyora()` launches it locally
-on demand — no server, no Node.js, nothing to compile. Dead and Cloudflare-blocked
-sources are hidden (a sensible static list by default; run `nyora blocklist refresh` to
-health-probe *your* engine and tailor it), so `list()`/`catalog()` return only the
-**~390 sources that actually work**. Prefer a server? Point `base_url` (or
-`nyora config set-url`) at any Nyora helper.
+`nyora` is **self-contained**. `pip install nyora` bundles the
+[`nyora-shared`](https://github.com/Nyora-Manga/nyora-shared) engine
+(and auto-downloads a JRE if you don't have Java); `Nyora()` launches it locally
+on demand — no server, no Node.js, nothing to compile. Source definitions are
+powered by [`nyora-data-driven`](https://github.com/Nyora-Manga/nyora-data-driven).
+Dead and Cloudflare-blocked sources are hidden (a sensible static list by default;
+run `nyora blocklist refresh` to health-probe *your* engine and tailor it), so
+`list()`/`catalog()` return only the **~390 sources that actually work**. Prefer a
+server? Point `base_url` (or `nyora config set-url`) at any Nyora helper.
 
 <a name="faq"></a>
 ## FAQ
@@ -331,7 +334,9 @@ Python API — no scraper maintenance, plus a CLI, TUI, downloader and cloud syn
 
 **Is this a Tachiyomi / Mihon / Kotatsu alternative?**
 Yes — it's the *programmatic* one. Those are Android apps; Nyora is an importable SDK
-(and cross-platform apps) built on the same open-source Kotatsu parser engine.
+(and cross-platform apps) built on the
+[`nyora-shared`](https://github.com/Nyora-Manga/nyora-shared) engine with source
+definitions from [`nyora-data-driven`](https://github.com/Nyora-Manga/nyora-data-driven).
 
 **Do I need to run a server or a JVM?**
 No. The engine is hosted. `pip install` and go. You *can* self-host and set `base_url`.
@@ -345,11 +350,11 @@ comics across 40 languages.
 ## Ecosystem
 
 - **JS/TS SDK** — [`nyora-sdk`](https://www.npmjs.com/package/nyora-sdk) (`npm i nyora-sdk`)
-- **Apps** — Android, iOS/iPadOS, macOS, Windows, Linux and a web app: <https://nyora.xyz>
+- **Apps** — Android, iOS/iPadOS, macOS, Windows, Linux and a web app: <https://web.nyora.xyz>
 - **Docs** — <https://nyora.xyz/docs/python/>
 - **Source** — <https://github.com/Nyora-Manga/nyora-python>
 
 ## License
 
-Apache-2.0. Nyora is built on the open-source Kotatsu parser engine and is not affiliated
-with Tachiyomi, Mihon or Kotatsu.
+Apache-2.0. Powered by the [`nyora-shared`](https://github.com/Nyora-Manga/nyora-shared) engine
+with source definitions from [`nyora-data-driven`](https://github.com/Nyora-Manga/nyora-data-driven).
